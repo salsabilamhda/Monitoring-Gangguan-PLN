@@ -73,15 +73,20 @@ if(isset($_GET['hapus'])){
   
   <div class="container-fluid">
       <?php
-      $tglawal = $_POST['tglawal'];
-      $tglakhir = $_POST['tglakhir'];
-      $tglawal1 = explode("/",$tglawal);
-      $gabungawal = $tglawal1[2].'-'.$tglawal1[0].'-'.$tglawal1[1];
-      $tglakhir1 = explode("/",$tglakhir);
-      $gabungakhir = $tglakhir1[2].'-'.$tglakhir1[0].'-'.$tglakhir1[1];
-      $unit = $_POST['unit'];
-        $gabungawal1  = $_GET['awal'];
-    $gabungakhir2 = $_GET['akhir'];
+      if (empty($_POST['tglawal']) && empty($_GET['awal'])) {
+          echo "<div class='alert alert-info mt-3' style='font-family: sans-serif;'>Silakan tentukan Range Tanggal dan Unit pada form di atas, lalu klik Pilih.</div></div></body></html>";
+          exit;
+      }
+
+      $tglawal = isset($_POST['tglawal']) ? $_POST['tglawal'] : '';
+      $tglakhir = isset($_POST['tglakhir']) ? $_POST['tglakhir'] : '';
+      $tglawal1 = $tglawal ? explode("/",$tglawal) : [];
+      $gabungawal = count($tglawal1) === 3 ? $tglawal1[2].'-'.$tglawal1[0].'-'.$tglawal1[1] : '';
+      $tglakhir1 = $tglakhir ? explode("/",$tglakhir) : [];
+      $gabungakhir = count($tglakhir1) === 3 ? $tglakhir1[2].'-'.$tglakhir1[0].'-'.$tglakhir1[1] : '';
+      $unit = isset($_POST['unit']) ? $_POST['unit'] : '';
+      $gabungawal1  = isset($_GET['awal']) ? $_GET['awal'] : '';
+      $gabungakhir2 = isset($_GET['akhir']) ? $_GET['akhir'] : '';
       $map = '<img src ="map.png" />';
       $lokasi='https://www.google.com/maps/place/';
       ?>

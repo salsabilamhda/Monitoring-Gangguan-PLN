@@ -33,12 +33,10 @@
                 </button>
 
                 <!-- LOGO -->
-                <div class="topbar-left">
-                    <div class="text-center">
-                        <!--<a href="index.html" class="logo"><i class="mdi mdi-assistant"></i> Zoter</a>-->
-                        <a href="index.php" class="logo">
-                            <p style = "color:white">Monitoring Gangguan</p>
-                          <!--  <img src="assets/images/logo-lg.png" alt="" class="logo-large">-->
+                <div class="topbar-left" style="height: 70px !important; min-height: 70px !important; max-height: 70px !important; padding: 0 !important; margin: 0 !important; line-height: 70px !important; display: flex !important; align-items: center !important; justify-content: center !important; box-sizing: border-box !important;">
+                    <div class="text-center" style="width: 100% !important; margin: 0 !important; padding: 0 !important;">
+                        <a href="index.php" class="logo" style="line-height: normal !important; margin: 0 !important; padding: 0 !important; display: block !important;">
+                            <span style="color:white; font-size: 15px; font-weight: 600; display: inline-block; vertical-align: middle;">Monitoring Gangguan</span>
                         </a>
                     </div>
                 </div>

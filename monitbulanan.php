@@ -32,6 +32,8 @@ include "connect.php";
   <!-- DataTables CSS -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
   <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <!-- jQuery + DataTables + Buttons -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -46,18 +48,23 @@ include "connect.php";
 </head>
 <body>
       <?php
-	$tahun = $_REQUEST['tahun'];
-	$kategori = $_REQUEST['option'];
-	$unit = $_REQUEST['unit'];
-	
-	        $merah = '<img src ="merah1.png" />';
-$hijau = '<img src ="hijau1.png" />';
-$hitam = '<img src ="hitam1.png" />';
-include "connect.php";
-$query2 = "select * from kodeunit where kodeunit = '$unit'"; 
-$hasil2 = mysql_query ($query2);
-$data2 = mysql_fetch_array($hasil2)
-?>       
+      if (empty($_REQUEST['tahun']) || empty($_REQUEST['unit'])) {
+          echo "<div class='container-fluid mt-3' style='font-family: sans-serif;'><div class='alert alert-info'>Silakan tentukan Tahun, Kategori, dan Unit pada form di atas, lalu klik Pilih.</div></div></body></html>";
+          exit;
+      }
+
+      $tahun = $_REQUEST['tahun'];
+      $kategori = $_REQUEST['option'];
+      $unit = $_REQUEST['unit'];
+      
+      $merah = '<img src ="merah1.png" />';
+      $hijau = '<img src ="hijau1.png" />';
+      $hitam = '<img src ="hitam1.png" />';
+      include "connect.php";
+      $query2 = "select * from kodeunit where kodeunit = '$unit'"; 
+      $hasil2 = mysql_query ($query2);
+      $data2 = mysql_fetch_array($hasil2);
+      ?>       
 <h5 style="background: white;padding :10px;">
      <hr>
     <table border = "0">

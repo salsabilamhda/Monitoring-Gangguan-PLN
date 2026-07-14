@@ -2470,6 +2470,7 @@ File: Menu
 .left .topbar-left {
   background-color: #242c6d;
   height: 71px;
+  line-height: 71px;
 }
 
 .has_sub.nav-active i.mdi-chevron-right:before {
@@ -2477,11 +2478,18 @@ File: Menu
 }
 
 .navbar-custom {
-  background-color: #283179;
+  background-color: #242c6d; /* matched background */
+  height: 71px;             /* matched height */
+  line-height: 71px;        /* matched line-height */
   border: none;
   margin: -20px -25px 0 -25px;
   -webkit-box-shadow: 1px 0px 20px rgba(0, 0, 0, 0.2);
           box-shadow: 1px 0px 20px rgba(0, 0, 0, 0.2);
+}
+
+.navbar-custom p {
+  margin: 0 !important;
+  line-height: 71px !important;
 }
 
 /* Notification */

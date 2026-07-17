@@ -25,9 +25,16 @@
         <style>
     .content {
       display: none;
-          }
+    }
     .content.active {
       display: block;
+    }
+    body {
+        padding: 5px 10px !important;
+        background-color: #f4f6f9 !important;
+    }
+    .card {
+        margin-bottom: 10px !important;
     }
   </style>
 
@@ -49,7 +56,8 @@
                 $tahunSekarang = '2020';
                 $tahunMaju = 30; // contoh: tampilkan 10 tahun ke depan
                 for ($i = $tahunSekarang; $i <= $tahunSekarang + $tahunMaju; $i++) {
-                    echo "<option value=\"$i\">$i</option>";
+                    $selected = ($i == date('Y')) ? 'selected' : '';
+                    echo "<option value=\"$i\" $selected>$i</option>";
                 }
             ?>
                                                        </select>
@@ -57,9 +65,9 @@
                                                 <div class="col-md-6">
                                                    <h6 class="sub-title mb-3">Kategori Gangguan</h6>
                                                  <div class="form-check-inline my-1">
-                                                                <div class="custom-control custom-radio">
+                                                                 <div class="custom-control custom-radio">
                                                                     <input type="radio" id="customRadio4" required = "" name="option" class="custom-control-input"
-                                                                    value = "PMT" checked>
+                                                                    value = "PMT">
                                                                     <label class="custom-control-label" for="customRadio4">PMT</label>
                                                                 </div>
                                                             </div>
@@ -73,7 +81,7 @@
                                                              <div class="form-check-inline my-1">
                                                                 <div class="custom-control custom-radio">
                                                                     <input type="radio" id="customRadio6" required = "" name="option" class="custom-control-input"
-                                                                    value = "ALL">
+                                                                    value = "ALL" checked>
                                                                     <label class="custom-control-label" for="customRadio6">ALL</label>
                                                                 </div>
                                                             </div>
@@ -93,7 +101,7 @@
     while($r = mysqli_fetch_assoc($v))
     {
         ?>
-        <option value="<?php echo $r['kodeunit']; ?>">
+        <option value="<?php echo $r['kodeunit']; ?>" <?php echo ($r['kodeunit'] == '5125') ? 'selected' : ''; ?>>
             <?php echo $r['uraian']; ?>
         </option>
         <?php
@@ -102,11 +110,13 @@
 </select>
                                                     
                                                 </div>
-                                              <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
-                                    </div>  </form>  
-                                     <div style = "margin : 10px 0px;">   <iframe height="600" allowTransparency="true" frameborder="0" 
-                                scrolling="auto" style="width:100%;border:none" name="frame23" src="monitbulanan.php" ></iframe></div>
-                            </div>      
+                                               <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
+                                     </div>  
+                                     </div>
+                                     </form>  
+                                      <div style="margin: 10px 0 0 0; height: calc(100vh - 210px); overflow: hidden;">
+                                          <iframe allowTransparency="true" frameborder="0" scrolling="auto" style="width:100%; height:100%; border:none;" name="frame23" src="monitbulanan.php" ></iframe>
+                                      </div>
                                   
         <!-- jQuery  -->
         <script src="assets/js/jquery.min.js"></script>

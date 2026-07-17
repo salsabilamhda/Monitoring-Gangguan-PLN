@@ -25,9 +25,16 @@
         <style>
     .content {
       display: none;
-          }
+    }
     .content.active {
       display: block;
+    }
+    body {
+        padding: 5px 10px !important;
+        background-color: #f4f6f9 !important;
+    }
+    .card {
+        margin-bottom: 10px !important;
     }
   </style>
 
@@ -44,8 +51,8 @@
                                                 <div class="col-md-6">
                                                     <h6 class="sub-title mb-3">Range Tanggal</h6>
                                                <div class="input-daterange input-group" id="date-range">
-                                                            <input type="text" class="form-control" required="" name="tglawal" placeholder="Start Date" />
-                                                            <input type="text" class="form-control" required="" name="tglakhir" placeholder="End Date" />
+                                                            <input type="text" class="form-control" required="" name="tglawal" placeholder="Start Date" value="<?php echo date('m/d/Y'); ?>" />
+                                                            <input type="text" class="form-control" required="" name="tglakhir" placeholder="End Date" value="<?php echo date('m/d/Y'); ?>" />
                                                         </div>
                                                 </div>
                                                 <div class="col-md-6" style = "margin:0px 0px 10px 0px;">
@@ -66,11 +73,13 @@ include "connect.php";
                                                        </select>
                                                   </div>
                                              
-                                              <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
-                                    </div>  </form>  
-                                     <div style = "margin : 10px 0px;">   <iframe height="600" allowTransparency="true" frameborder="0" 
-                                scrolling="auto" style="width:100%;border:none" name="frame23" src="monitharian.php" ></iframe></div>
-                            </div>      
+                                               <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
+                                     </div>  
+                                     </div>
+                                     </form>  
+                                      <div style="margin: 10px 0 0 0; height: calc(100vh - 210px); overflow: hidden;">
+                                          <iframe allowTransparency="true" frameborder="0" scrolling="auto" style="width:100%; height:100%; border:none;" name="frame23" src="monitharian.php" ></iframe>
+                                      </div>
                                   
         <!-- jQuery  -->
         <script src="assets/js/jquery.min.js"></script>

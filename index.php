@@ -14,7 +14,62 @@
         <link href="assets/css/bootstrap.min.css" rel="stylesheet" type="text/css">
         <link href="assets/css/icons.css" rel="stylesheet" type="text/css">
         <link href="assets/css/style.css" rel="stylesheet" type="text/css">
-
+        <style>
+            html, body, #wrapper {
+                width: 100vw !important;
+                max-width: 100vw !important;
+                height: 100% !important;
+                overflow: hidden !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+            }
+            .content-page {
+                margin-left: 240px !important;
+                width: calc(100vw - 240px) !important;
+                max-width: calc(100vw - 240px) !important;
+                height: calc(100vh - 70px) !important;
+                overflow: hidden !important;
+                float: left !important;
+                box-sizing: border-box !important;
+            }
+            .content {
+                width: 100% !important;
+                height: 100% !important;
+                overflow: hidden !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+            }
+            .topbar {
+                width: 100% !important;
+                max-width: 100% !important;
+                background-color: #242c6d !important;
+                box-sizing: border-box !important;
+            }
+            .topbar-left, .left .topbar-left {
+                height: 70px !important;
+                min-height: 70px !important;
+                max-height: 70px !important;
+                line-height: 70px !important;
+                background-color: #242c6d !important;
+            }
+            .navbar-custom {
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 70px !important;
+                min-height: 70px !important;
+                max-height: 70px !important;
+                line-height: 70px !important;
+                background-color: #242c6d !important;
+                margin: 0 !important;
+                padding: 0 20px !important;
+                box-sizing: border-box !important;
+            }
+            .navbar-custom p {
+                margin: 0 !important;
+                line-height: 70px !important;
+            }
+        </style>
     </head>
 
 
@@ -379,9 +434,10 @@ return true;
 
                      
                                 
-                                <div style = "margin : 10px 0px;">   <iframe height="1100" allowTransparency="true" frameborder="0" 
-                                scrolling="auto" style="width:100%;border:none" name="frame2367" src='pages-404.html' ></iframe></div>
-                            </div>                            <!-- end page title end breadcrumb -->
+                                 <div style="margin: 0; padding: 15px; height: calc(100vh - 70px); box-sizing: border-box; overflow: hidden;">
+                                     <iframe allowTransparency="true" frameborder="0" scrolling="auto" style="width:100%; height:100%; border:none;" name="frame2367" src='pages-404.html'></iframe>
+                                 </div>
+                             </div>                            <!-- end page title end breadcrumb -->
                             
 
                        

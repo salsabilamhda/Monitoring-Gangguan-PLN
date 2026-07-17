@@ -25,19 +25,50 @@ if(isset($_GET['hapus'])){
   <style>
     body {
       font-family: "Segoe UI", Arial, sans-serif;
-      background-color: #f4f4f4;
+      background-color: #f4f6f9;
+      color: #333;
+      padding: 0 !important;
+      margin: 0 !important;
     }
-    .container {
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      background-color: #ffffff;
+      margin: 0 0 10px 0 !important;
+    }
+    .card-body {
+      padding: 12px;
     }
     table.dataTable thead th {
+      background-color: #242c6d !important;
+      color: #ffffff !important;
       text-align: center;
       vertical-align: middle;
+      font-weight: 600;
+      border-bottom: 2px solid #dee2e6 !important;
+      font-size: 11px;
     }
+    table.dataTable tbody td {
+      font-size: 11px;
+      vertical-align: middle;
+      text-align: center;
+    }
+    /* Align ULP and Penyulang columns to left */
+    table.dataTable tbody td:nth-child(2),
+    table.dataTable tbody td:nth-child(3) {
+      text-align: left !important;
+    }
+    /* Force DataTables wrappers to full width */
+    #tabelPegawai_wrapper,
+    .dataTables_scroll,
+    .dataTables_scrollHead,
+    .dataTables_scrollHeadInner,
+    .dataTables_scrollHeadInner table,
+    .dataTables_scrollBody,
+    .dataTables_scrollBody table,
     table.dataTable {
-      font-size: 12px;
+      width: 100% !important;
     }
     .img-thumb {
       width: 30px;
@@ -71,12 +102,10 @@ if(isset($_GET['hapus'])){
 </head>
 <body>
   
-  <div class="container-fluid">
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
       <?php
-      if (empty($_POST['tglawal']) && empty($_GET['awal'])) {
-          echo "<div class='alert alert-info mt-3' style='font-family: sans-serif;'>Silakan tentukan Range Tanggal dan Unit pada form di atas, lalu klik Pilih.</div></div></body></html>";
-          exit;
-      }
+
 
       $tglawal = isset($_POST['tglawal']) ? $_POST['tglawal'] : '';
       $tglakhir = isset($_POST['tglakhir']) ? $_POST['tglakhir'] : '';
@@ -122,19 +151,22 @@ if(isset($_GET['hapus'])){
       <tbody>
         <?php
         $no = 1;
-        if ($unit == '5125' &&  $gabungawal1 == '') {
+        if (empty($tglawal) && empty($gabungawal1)) {
+          // Jika belum di-filter, tampilkan data gangguan hari ini (CURDATE)
+          $query = "SELECT * FROM v_datagangguan WHERE DATE(tglgangguan) = CURDATE() ORDER BY tglgangguan DESC";
+        }
+        else if ($unit == '5125' &&  $gabungawal1 == '') {
           $query = "SELECT * FROM v_datagangguan 
                     WHERE tglgangguan BETWEEN '$gabungawal' AND '$gabungakhir'";
         } 
-      else   if ($unit == '5125' &&  $gabungawal1 != '') {
+        else if ($unit == '5125' &&  $gabungawal1 != '') {
           $query = "SELECT * FROM v_datagangguan 
                     WHERE tglgangguan BETWEEN '$gabungawal1' AND '$gabungakhir2'";
         } 
-         else   if ($unit != '5125' &&  $gabungawal1 != '') {
+        else if ($unit != '5125' &&  $gabungawal1 != '') {
           $query = "SELECT * FROM v_datagangguan 
                     WHERE tglgangguan BETWEEN '$gabungawal1' AND '$gabungakhir2' AND unit = '$unit'";
         } 
-        
         else {
           $query = "SELECT * FROM v_datagangguan 
                     WHERE tglgangguan BETWEEN '$gabungawal' AND '$gabungakhir' 
@@ -143,7 +175,7 @@ if(isset($_GET['hapus'])){
         
         $hasil = mysql_query($query);
         while ($data = mysql_fetch_array($hasil)) {
-        if ($data[foto2] != '')
+        if ($data['foto2'] != '')
           echo "<tr>
             <td align='center'>$no</td>
               <td>$data[kodegangguan]</td>
@@ -183,7 +215,7 @@ if(isset($_GET['hapus'])){
 
             <td> <a href='?hapus={$data['idgangguan']}&awal={$gabungawal}&akhir={$gabungakhir}' class='btn btn-sm btn-danger' onclick=\"return confirm('Yakin hapus?')\">Hapus</a></td>
           </tr>";
-          else if ($data[foto1] != '')
+          else if ($data['foto1'] != '')
         
           echo "<tr>
             <td align='center'>$no</td>
@@ -267,6 +299,7 @@ if(isset($_GET['hapus'])){
         ?>
       </tbody>
     </table>
+    </div>
   </div>
 
   <!-- Modal Galeri -->
@@ -292,7 +325,7 @@ if(isset($_GET['hapus'])){
     $(document).ready(function() {
       $('#tabelPegawai').DataTable({
         scrollX: true,
-        scrollY: '300px',
+        scrollY: 'calc(100vh - 150px)',
         scrollCollapse: true,
         paging: true,
         dom: 'Bfrtip',

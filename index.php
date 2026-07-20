@@ -14,7 +14,62 @@
         <link href="assets/css/bootstrap.min.css" rel="stylesheet" type="text/css">
         <link href="assets/css/icons.css" rel="stylesheet" type="text/css">
         <link href="assets/css/style.css" rel="stylesheet" type="text/css">
-
+        <style>
+            html, body, #wrapper {
+                width: 100vw !important;
+                max-width: 100vw !important;
+                height: 100% !important;
+                overflow: hidden !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+            }
+            .content-page {
+                margin-left: 240px !important;
+                width: calc(100vw - 240px) !important;
+                max-width: calc(100vw - 240px) !important;
+                height: 100vh !important;
+                overflow: hidden !important;
+                float: left !important;
+                box-sizing: border-box !important;
+            }
+            .content {
+                width: 100% !important;
+                height: 100% !important;
+                overflow: hidden !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+            }
+            .topbar {
+                width: 100% !important;
+                max-width: 100% !important;
+                background-color: #242c6d !important;
+                box-sizing: border-box !important;
+            }
+            .topbar-left, .left .topbar-left {
+                height: 70px !important;
+                min-height: 70px !important;
+                max-height: 70px !important;
+                line-height: 70px !important;
+                background-color: #242c6d !important;
+            }
+            .navbar-custom {
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 70px !important;
+                min-height: 70px !important;
+                max-height: 70px !important;
+                line-height: 70px !important;
+                background-color: #242c6d !important;
+                margin: 0 !important;
+                padding: 0 20px !important;
+                box-sizing: border-box !important;
+            }
+            .navbar-custom p {
+                margin: 0 !important;
+                line-height: 70px !important;
+            }
+        </style>
     </head>
 
 
@@ -33,12 +88,10 @@
                 </button>
 
                 <!-- LOGO -->
-                <div class="topbar-left">
-                    <div class="text-center">
-                        <!--<a href="index.html" class="logo"><i class="mdi mdi-assistant"></i> Zoter</a>-->
-                        <a href="index.php" class="logo">
-                            <p style = "color:white">Monitoring Gangguan</p>
-                          <!--  <img src="assets/images/logo-lg.png" alt="" class="logo-large">-->
+                <div class="topbar-left" style="height: 70px !important; min-height: 70px !important; max-height: 70px !important; padding: 0 !important; margin: 0 !important; line-height: 70px !important; display: flex !important; align-items: center !important; justify-content: center !important; box-sizing: border-box !important;">
+                    <div class="text-center" style="width: 100% !important; margin: 0 !important; padding: 0 !important;">
+                        <a href="index.php" class="logo" style="line-height: normal !important; margin: 0 !important; padding: 0 !important; display: block !important;">
+                            <span style="color:white; font-size: 15px; font-weight: 600; display: inline-block; vertical-align: middle;">Monitoring Gangguan</span>
                         </a>
                     </div>
                 </div>
@@ -272,7 +325,7 @@
                               <!--</li>-->
 
                                 <li class="list-inline-item dropdown notification-list">
-                                                                        <p style="color:white;"> <script type="text/javascript">
+                                                                        <p style="color:#242c6d; font-weight: 600; margin: 0; padding: 10px 0;"> <script type="text/javascript">
 function date_time(id)
 {
 date = new Date;
@@ -381,9 +434,10 @@ return true;
 
                      
                                 
-                                <div style = "margin : 10px 0px;">   <iframe height="1100" allowTransparency="true" frameborder="0" 
-                                scrolling="auto" style="width:100%;border:none" name="frame2367" src='pages-404.html' ></iframe></div>
-                            </div>                            <!-- end page title end breadcrumb -->
+                                 <div style="width: 100%; margin: 0; padding: 0 15px; height: calc(100vh - 130px); box-sizing: border-box; overflow: hidden;">
+                                     <iframe allowTransparency="true" frameborder="0" scrolling="auto" style="width:100%; height:100%; border:none;" name="frame2367" src='pages-404.html'></iframe>
+                                 </div>
+                             </div>                            <!-- end page title end breadcrumb -->
                             
 
                        

@@ -25,12 +25,32 @@
         <style>
     .content {
       display: none;
-          }
+    }
     .content.active {
       display: block;
     }
+    body {
+        padding: 0px 10px !important;
+        background-color: #f4f6f9 !important;
+    }
+    .page-title {
+        margin-top: 5px !important;
+        margin-bottom: 10px !important;
+    }
+    .card {
+        margin-bottom: 10px !important;
+    }
   </style>
-
+  <script>
+    function resizeIframe(obj) {
+      if (obj && obj.contentWindow && obj.contentWindow.document) {
+        var wrapper = obj.contentWindow.document.getElementById('content-wrapper');
+        if (wrapper) {
+          obj.style.height = (wrapper.scrollHeight + 40) + 'px';
+        }
+      }
+    }
+  </script>
     </head>
 
 
@@ -49,7 +69,8 @@
                 $tahunSekarang = '2020';
                 $tahunMaju = 30; // contoh: tampilkan 10 tahun ke depan
                 for ($i = $tahunSekarang; $i <= $tahunSekarang + $tahunMaju; $i++) {
-                    echo "<option value=\"$i\">$i</option>";
+                    $selected = ($i == date('Y')) ? 'selected' : '';
+                    echo "<option value=\"$i\" $selected>$i</option>";
                 }
             ?>
                                                        </select>
@@ -57,9 +78,9 @@
                                                 <div class="col-md-6">
                                                    <h6 class="sub-title mb-3">Kategori Gangguan</h6>
                                                  <div class="form-check-inline my-1">
-                                                                <div class="custom-control custom-radio">
+                                                                 <div class="custom-control custom-radio">
                                                                     <input type="radio" id="customRadio4" required = "" name="option" class="custom-control-input"
-                                                                    value = "PMT" checked>
+                                                                    value = "PMT">
                                                                     <label class="custom-control-label" for="customRadio4">PMT</label>
                                                                 </div>
                                                             </div>
@@ -73,7 +94,7 @@
                                                              <div class="form-check-inline my-1">
                                                                 <div class="custom-control custom-radio">
                                                                     <input type="radio" id="customRadio6" required = "" name="option" class="custom-control-input"
-                                                                    value = "ALL">
+                                                                    value = "ALL" checked>
                                                                     <label class="custom-control-label" for="customRadio6">ALL</label>
                                                                 </div>
                                                             </div>
@@ -88,12 +109,12 @@
     <?php
     include "connect.php";
 
-    $v = mysqli_query($koneksi,"SELECT * FROM kodeunit ORDER BY uraian");
+    $v = mysql_query("SELECT * FROM kodeunit ORDER BY uraian");
 
-    while($r = mysqli_fetch_assoc($v))
+    while($r = mysql_fetch_assoc($v))
     {
         ?>
-        <option value="<?php echo $r['kodeunit']; ?>">
+        <option value="<?php echo $r['kodeunit']; ?>" <?php echo ($r['kodeunit'] == '5125') ? 'selected' : ''; ?>>
             <?php echo $r['uraian']; ?>
         </option>
         <?php
@@ -102,11 +123,13 @@
 </select>
                                                     
                                                 </div>
-                                              <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
-                                    </div>  </form>  
-                                     <div style = "margin : 10px 0px;">   <iframe height="600" allowTransparency="true" frameborder="0" 
-                                scrolling="auto" style="width:100%;border:none" name="frame23" src="monitbulanan.php" ></iframe></div>
-                            </div>      
+                                               <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
+                                     </div>  
+                                     </div>
+                                     </form>  
+                                      <div style="width: 100%; margin: 10px 0 0 0; overflow: hidden;">
+                                          <iframe onload="resizeIframe(this)" allowTransparency="true" frameborder="0" scrolling="no" style="width:100%; border:none;" name="frame23" src="monitbulanan.php" ></iframe>
+                                      </div>
                                   
         <!-- jQuery  -->
         <script src="assets/js/jquery.min.js"></script>

@@ -26,19 +26,47 @@ if(isset($_GET['hapus'])){
   <style>
     body {
       font-family: "Segoe UI", Arial, sans-serif;
-      background-color: #f4f4f4;
+      background-color: #f4f6f9;
+      color: #333;
+      padding: 0 !important;
+      margin: 0 !important;
     }
-    .container {
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      background-color: #ffffff;
+      margin: 0 0 10px 0 !important;
+    }
+    .card-body {
+      padding: 12px;
     }
     table.dataTable thead th {
+      background-color: #242c6d !important;
+      color: #ffffff !important;
       text-align: center;
       vertical-align: middle;
+      font-weight: 600;
+      border-bottom: 2px solid #dee2e6 !important;
+      font-size: 11px;
     }
+    table.dataTable tbody td {
+      font-size: 11px;
+      vertical-align: middle;
+      text-align: center;
+    }
+    /* Align ULP and Penyulang columns to left */
+    table.dataTable tbody td:nth-child(2),
+    table.dataTable tbody td:nth-child(3) {
+      text-align: left !important;
+    }
+    /* Force DataTables wrappers to full width */
+    #tabelPegawai_wrapper,
+    .dataTables_scroll,
+    .dataTables_scrollHead,
+    .dataTables_scrollBody,
     table.dataTable {
-      font-size: 12px;
+      width: 100% !important;
     }
     .img-thumb {
       width: 30px;
@@ -71,8 +99,10 @@ if(isset($_GET['hapus'])){
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
+<div id="content-wrapper">
   
-  <div class="container-fluid">
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
       <?php
       $tglawal = isset($_POST['tglawal']) ? $_POST['tglawal'] : '';
       $tglakhir = isset($_POST['tglakhir']) ? $_POST['tglakhir'] : '';
@@ -137,7 +167,10 @@ if(isset($_GET['hapus'])){
         $current_awal = !empty($gabungawal) ? $gabungawal : $gabungawal1;
         $current_akhir = !empty($gabungakhir) ? $gabungakhir : $gabungakhir2;
         
-        if ($gabungawal1 != '' && $gabungakhir2 != '') {
+        if (empty($tglawal) && empty($gabungawal1)) {
+            // Jika belum di-filter, tampilkan data gangguan hari ini (CURDATE)
+            $query = "SELECT * FROM v_datagangguan WHERE DATE(tglgangguan) = CURDATE() ORDER BY tglgangguan DESC";
+        } elseif ($gabungawal1 != '' && $gabungakhir2 != '') {
             if ($unit == '5125') {
                 $query = "SELECT * FROM v_datagangguan 
                           WHERE tglgangguan BETWEEN '$gabungawal1' AND '$gabungakhir2'";
@@ -286,6 +319,7 @@ if(isset($_GET['hapus'])){
         ?>
       </tbody>
     </table>
+    </div>
   </div>
 
   <!-- Modal Galeri -->
@@ -309,15 +343,25 @@ if(isset($_GET['hapus'])){
   <script>
     // DataTables
     $(document).ready(function() {
-      $('#tabelPegawai').DataTable({
+      var table = $('#tabelPegawai').DataTable({
         scrollX: true,
-        scrollY: '300px',
-        scrollCollapse: true,
         paging: true,
         dom: 'Bfrtip',
         buttons: ['excelHtml5', 'pdfHtml5', 'print'],
         orderCellsTop: true
       });
+
+      table.on('draw', function() {
+        if (window.parent && typeof window.parent.resizeIframe === 'function') {
+          var iframe = window.parent.document.getElementsByName('frame23')[0];
+          window.parent.resizeIframe(iframe);
+        }
+      });
+
+      if (window.parent && typeof window.parent.resizeIframe === 'function') {
+        var iframe = window.parent.document.getElementsByName('frame23')[0];
+        window.parent.resizeIframe(iframe);
+      }
     });
 
     // Galeri modal
@@ -346,5 +390,6 @@ if(isset($_GET['hapus'])){
     });
   </script>
 
+</div>
 </body>
 </html>

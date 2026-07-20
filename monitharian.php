@@ -3,8 +3,9 @@ include "connect.php";
 // Hapus data (hanya unit 5125)
 if(isset($_GET['hapus'])){
     $id_hapus = intval($_GET['hapus']);
-        $gabungawal  = $_GET['awal'];
+    $gabungawal  = $_GET['awal'];
     $gabungakhir = $_GET['akhir'];
+    $unit = isset($_GET['unit']) ? $_GET['unit'] : '';
     $qf = mysql_query("SELECT foto1,foto2 FROM datagangguan WHERE idgangguan=$id_hapus");
     if($rf = mysql_fetch_assoc($qf)){
         foreach($rf as $f){
@@ -12,7 +13,7 @@ if(isset($_GET['hapus'])){
         }
     }
     mysql_query("DELETE FROM datagangguan WHERE idgangguan=$id_hapus") or die(mysql_error());
-    echo "<script>alert('Data berhasil dihapus');window.location='".$_SERVER['PHP_SELF']."?awal={$gabungawal}&akhir={$gabungakhir}';</script>";
+    echo "<script>alert('Data berhasil dihapus');window.location='".$_SERVER['PHP_SELF']."?awal={$gabungawal}&akhir={$gabungakhir}&unit={$unit}';</script>";
 }
 ?>
 
@@ -73,15 +74,28 @@ if(isset($_GET['hapus'])){
   
   <div class="container-fluid">
       <?php
-      $tglawal = $_POST['tglawal'];
-      $tglakhir = $_POST['tglakhir'];
-      $tglawal1 = explode("/",$tglawal);
-      $gabungawal = $tglawal1[2].'-'.$tglawal1[0].'-'.$tglawal1[1];
-      $tglakhir1 = explode("/",$tglakhir);
-      $gabungakhir = $tglakhir1[2].'-'.$tglakhir1[0].'-'.$tglakhir1[1];
-      $unit = $_POST['unit'];
-        $gabungawal1  = $_GET['awal'];
-    $gabungakhir2 = $_GET['akhir'];
+      $tglawal = isset($_POST['tglawal']) ? $_POST['tglawal'] : '';
+      $tglakhir = isset($_POST['tglakhir']) ? $_POST['tglakhir'] : '';
+      
+      $gabungawal = '';
+      if (!empty($tglawal)) {
+          $tglawal1 = explode("/", $tglawal);
+          if (count($tglawal1) === 3) {
+              $gabungawal = $tglawal1[2].'-'.$tglawal1[0].'-'.$tglawal1[1];
+          }
+      }
+      
+      $gabungakhir = '';
+      if (!empty($tglakhir)) {
+          $tglakhir1 = explode("/", $tglakhir);
+          if (count($tglakhir1) === 3) {
+              $gabungakhir = $tglakhir1[2].'-'.$tglakhir1[0].'-'.$tglakhir1[1];
+          }
+      }
+      
+      $unit = isset($_POST['unit']) ? $_POST['unit'] : (isset($_GET['unit']) ? $_GET['unit'] : '');
+      $gabungawal1  = isset($_GET['awal']) ? $_GET['awal'] : '';
+      $gabungakhir2 = isset($_GET['akhir']) ? $_GET['akhir'] : '';
       $map = '<img src ="map.png" />';
       $lokasi='https://www.google.com/maps/place/';
       ?>
@@ -117,147 +131,157 @@ if(isset($_GET['hapus'])){
       <tbody>
         <?php
         $no = 1;
-        if ($unit == '5125' &&  $gabungawal1 == '') {
-          $query = "SELECT * FROM v_datagangguan 
-                    WHERE tglgangguan BETWEEN '$gabungawal' AND '$gabungakhir'";
-        } 
-      else   if ($unit == '5125' &&  $gabungawal1 != '') {
-          $query = "SELECT * FROM v_datagangguan 
-                    WHERE tglgangguan BETWEEN '$gabungawal1' AND '$gabungakhir2'";
-        } 
-         else   if ($unit != '5125' &&  $gabungawal1 != '') {
-          $query = "SELECT * FROM v_datagangguan 
-                    WHERE tglgangguan BETWEEN '$gabungawal1' AND '$gabungakhir2' AND unit = '$unit'";
-        } 
+        $hasil = false;
+        $query = "";
         
-        else {
-          $query = "SELECT * FROM v_datagangguan 
-                    WHERE tglgangguan BETWEEN '$gabungawal' AND '$gabungakhir' 
-                    AND unit = '$unit'";
+        $current_awal = !empty($gabungawal) ? $gabungawal : $gabungawal1;
+        $current_akhir = !empty($gabungakhir) ? $gabungakhir : $gabungakhir2;
+        
+        if ($gabungawal1 != '' && $gabungakhir2 != '') {
+            if ($unit == '5125') {
+                $query = "SELECT * FROM v_datagangguan 
+                          WHERE tglgangguan BETWEEN '$gabungawal1' AND '$gabungakhir2'";
+            } else {
+                $query = "SELECT * FROM v_datagangguan 
+                          WHERE tglgangguan BETWEEN '$gabungawal1' AND '$gabungakhir2' AND unit = '$unit'";
+            }
+        } elseif ($gabungawal != '' && $gabungakhir != '') {
+            if ($unit == '5125') {
+                $query = "SELECT * FROM v_datagangguan 
+                          WHERE tglgangguan BETWEEN '$gabungawal' AND '$gabungakhir'";
+            } else {
+                $query = "SELECT * FROM v_datagangguan 
+                          WHERE tglgangguan BETWEEN '$gabungawal' AND '$gabungakhir' 
+                          AND unit = '$unit'";
+            }
         }
         
-        $hasil = mysql_query($query);
-        while ($data = mysql_fetch_array($hasil)) {
-        if ($data[foto2] != '')
-          echo "<tr>
-            <td align='center'>$no</td>
-              <td>$data[kodegangguan]</td>
-            <td>$data[uraian]</td>
-            <td>$data[uraianpenyul]</td>
-            <td>$data[keterangan]</td>
-            <td align='center'>$data[kat_gangguan]</td>
-            <td>$data[kategorigangguan]</td>
-            <td align='center'>$data[tglgangguan]</td>
-            <td align='center'>$data[tglmasuk]</td>
-            <td align='center'>$data[selisih_menit]</td>
-            <td align='center'>$data[relay]</td>
-            <td align='center'>$data[fasa]</td>
-            <td align='center'>$data[kv0]</td>
-            <td align='center'>$data[ir]</td>
-            <td align='center'>$data[ies]</td>
-            <td align='center'>$data[it]</td>
-            <td align='center'>$data[inetral]</td>
-            <td>$data[uraiancuaca]</td>
-            <td>$data[uraianjenisgangguan]</td>
-            <td>$data[hasiltemuan]</td>
-            
-            <!-- Foto 1 -->
-            <td align='center'>
-              <img src='uploads/$data[foto1]' class='img-thumb' data-img='uploads/$data[foto1]' />
-            </td>
-
-            <!-- Foto 2 -->
-            <td align='center'>
-              <img src='uploads/$data[foto2]' class='img-thumb' data-img='uploads/$data[foto2]' />
-            </td>
-
-            <!-- Map -->
-            <td align='center'>
-            <a href=https://www.google.com/maps/place/$data[latlokasi],$data[longlokasi]  target='_blank' style='cursor:pointer' title ='Cek Koordinat'>$map<a>
-            </td>
-
-            <td> <a href='?hapus={$data['idgangguan']}&awal={$gabungawal}&akhir={$gabungakhir}' class='btn btn-sm btn-danger' onclick=\"return confirm('Yakin hapus?')\">Hapus</a></td>
-          </tr>";
-          else if ($data[foto1] != '')
+        if ($query != "") {
+            $hasil = mysql_query($query);
+        }
         
-          echo "<tr>
-            <td align='center'>$no</td>
-              <td>$data[kodegangguan]</td>
-            <td>$data[uraian]</td>
-            <td>$data[uraianpenyul]</td>
-            <td>$data[keterangan]</td>
-            <td align='center'>$data[kat_gangguan]</td>
-            <td>$data[kategorigangguan]</td>
-            <td align='center'>$data[tglgangguan]</td>
-            <td align='center'>$data[tglmasuk]</td>
-            <td align='center'>$data[selisih_menit]</td>
-            <td align='center'>$data[relay]</td>
-            <td align='center'>$data[fasa]</td>
-            <td align='center'>$data[kv0]</td>
-            <td align='center'>$data[ir]</td>
-            <td align='center'>$data[ies]</td>
-            <td align='center'>$data[it]</td>
-            <td align='center'>$data[inetral]</td>
-            <td>$data[uraiancuaca]</td>
-            <td>$data[uraianjenisgangguan]</td>
-            <td>$data[hasiltemuan]</td>
-            
-            <!-- Foto 1 -->
-            <td align='center'>
-              <img src='uploads/$data[foto1]' class='img-thumb' data-img='uploads/$data[foto1]' />
-            </td>
+        if ($hasil) {
+            while ($data = mysql_fetch_array($hasil)) {
+                if ($data['foto2'] != '') {
+                    echo "<tr>
+                        <td align='center'>$no</td>
+                        <td>{$data['kodegangguan']}</td>
+                        <td>{$data['uraian']}</td>
+                        <td>{$data['uraianpenyul']}</td>
+                        <td>{$data['keterangan']}</td>
+                        <td align='center'>{$data['kat_gangguan']}</td>
+                        <td>{$data['kategorigangguan']}</td>
+                        <td align='center'>{$data['tglgangguan']}</td>
+                        <td align='center'>{$data['tglmasuk']}</td>
+                        <td align='center'>{$data['selisih_menit']}</td>
+                        <td align='center'>{$data['relay']}</td>
+                        <td align='center'>{$data['fasa']}</td>
+                        <td align='center'>{$data['kv0']}</td>
+                        <td align='center'>{$data['ir']}</td>
+                        <td align='center'>{$data['ies']}</td>
+                        <td align='center'>{$data['it']}</td>
+                        <td align='center'>{$data['inetral']}</td>
+                        <td>{$data['uraiancuaca']}</td>
+                        <td>{$data['uraianjenisgangguan']}</td>
+                        <td>{$data['hasiltemuan']}</td>
+                        
+                        <!-- Foto 1 -->
+                        <td align='center'>
+                          <img src='uploads/{$data['foto1']}' class='img-thumb' data-img='uploads/{$data['foto1']}' />
+                        </td>
 
-            <!-- Foto 2 -->
-            <td align='center'>
-            </td>
+                        <!-- Foto 2 -->
+                        <td align='center'>
+                          <img src='uploads/{$data['foto2']}' class='img-thumb' data-img='uploads/{$data['foto2']}' />
+                        </td>
 
-            <!-- Map -->
-            <td align='center'>
-              <a href=https://www.google.com/maps/place/$data[latlokasi],$data[longlokasi]  target='_blank' style='cursor:pointer' title ='Cek Koordinat'>$map<a>
-            </td>
+                        <!-- Map -->
+                        <td align='center'>
+                          <a href='https://www.google.com/maps/place/{$data['latlokasi']},{$data['longlokasi']}' target='_blank' style='cursor:pointer' title='Cek Koordinat'>$map</a>
+                        </td>
 
-            <td>  <a href='?hapus={$data['idgangguan']}&awal={$gabungawal}&akhir={$gabungakhir}' class='btn btn-sm btn-danger' onclick=\"return confirm('Yakin hapus?')\">Hapus</a></td>
-          </tr>";
-          else 
-          echo "<tr>
-            <td align='center'>$no</td>
-              <td>$data[kodegangguan]</td>
-            <td>$data[uraian]</td>
-            <td>$data[uraianpenyul]</td>
-            <td>$data[keterangan]</td>
-            <td align='center'>$data[kat_gangguan]</td>
-            <td>$data[kategorigangguan]</td>
-            <td align='center'>$data[tglgangguan]</td>
-            <td align='center'>$data[tglmasuk]</td>
-            <td align='center'>$data[selisih_menit]</td>
-            <td align='center'>$data[relay]</td>
-            <td align='center'>$data[fasa]</td>
-            <td align='center'>$data[kv0]</td>
-            <td align='center'>$data[ir]</td>
-            <td align='center'>$data[ies]</td>
-            <td align='center'>$data[it]</td>
-            <td align='center'>$data[inetral]</td>
-            <td>$data[uraiancuaca]</td>
-            <td>$data[uraianjenisgangguan]</td>
-            <td>$data[hasiltemuan]</td>
-            
-            <!-- Foto 1 -->
-            <td align='center'>
-             
-            </td>
+                        <td><a href='?hapus={$data['idgangguan']}&awal={$current_awal}&akhir={$current_akhir}&unit={$unit}' class='btn btn-sm btn-danger' onclick=\"return confirm('Yakin hapus?')\">Hapus</a></td>
+                    </tr>";
+                } else if ($data['foto1'] != '') {
+                    echo "<tr>
+                        <td align='center'>$no</td>
+                        <td>{$data['kodegangguan']}</td>
+                        <td>{$data['uraian']}</td>
+                        <td>{$data['uraianpenyul']}</td>
+                        <td>{$data['keterangan']}</td>
+                        <td align='center'>{$data['kat_gangguan']}</td>
+                        <td>{$data['kategorigangguan']}</td>
+                        <td align='center'>{$data['tglgangguan']}</td>
+                        <td align='center'>{$data['tglmasuk']}</td>
+                        <td align='center'>{$data['selisih_menit']}</td>
+                        <td align='center'>{$data['relay']}</td>
+                        <td align='center'>{$data['fasa']}</td>
+                        <td align='center'>{$data['kv0']}</td>
+                        <td align='center'>{$data['ir']}</td>
+                        <td align='center'>{$data['ies']}</td>
+                        <td align='center'>{$data['it']}</td>
+                        <td align='center'>{$data['inetral']}</td>
+                        <td>{$data['uraiancuaca']}</td>
+                        <td>{$data['uraianjenisgangguan']}</td>
+                        <td>{$data['hasiltemuan']}</td>
+                        
+                        <!-- Foto 1 -->
+                        <td align='center'>
+                          <img src='uploads/{$data['foto1']}' class='img-thumb' data-img='uploads/{$data['foto1']}' />
+                        </td>
 
-            <!-- Foto 2 -->
-            <td align='center'>
-            </td>
+                        <!-- Foto 2 -->
+                        <td align='center'>
+                        </td>
 
-            <!-- Map -->
-            <td align='center'>
-              <a href=https://www.google.com/maps/place/$data[latlokasi],$data[longlokasi]  target='_blank' style='cursor:pointer' title ='Cek Koordinat'>$map<a>
-            </td>
+                        <!-- Map -->
+                        <td align='center'>
+                          <a href='https://www.google.com/maps/place/{$data['latlokasi']},{$data['longlokasi']}' target='_blank' style='cursor:pointer' title='Cek Koordinat'>$map</a>
+                        </td>
 
-            <td>  <a href='?hapus={$data['idgangguan']}&awal={$gabungawal}&akhir={$gabungakhir}' class='btn btn-sm btn-danger' onclick=\"return confirm('Yakin hapus?')\">Hapus</a></td>
-          </tr>";
-          $no++;
+                        <td><a href='?hapus={$data['idgangguan']}&awal={$current_awal}&akhir={$current_akhir}&unit={$unit}' class='btn btn-sm btn-danger' onclick=\"return confirm('Yakin hapus?')\">Hapus</a></td>
+                    </tr>";
+                } else {
+                    echo "<tr>
+                        <td align='center'>$no</td>
+                        <td>{$data['kodegangguan']}</td>
+                        <td>{$data['uraian']}</td>
+                        <td>{$data['uraianpenyul']}</td>
+                        <td>{$data['keterangan']}</td>
+                        <td align='center'>{$data['kat_gangguan']}</td>
+                        <td>{$data['kategorigangguan']}</td>
+                        <td align='center'>{$data['tglgangguan']}</td>
+                        <td align='center'>{$data['tglmasuk']}</td>
+                        <td align='center'>{$data['selisih_menit']}</td>
+                        <td align='center'>{$data['relay']}</td>
+                        <td align='center'>{$data['fasa']}</td>
+                        <td align='center'>{$data['kv0']}</td>
+                        <td align='center'>{$data['ir']}</td>
+                        <td align='center'>{$data['ies']}</td>
+                        <td align='center'>{$data['it']}</td>
+                        <td align='center'>{$data['inetral']}</td>
+                        <td>{$data['uraiancuaca']}</td>
+                        <td>{$data['uraianjenisgangguan']}</td>
+                        <td>{$data['hasiltemuan']}</td>
+                        
+                        <!-- Foto 1 -->
+                        <td align='center'>
+                        </td>
+
+                        <!-- Foto 2 -->
+                        <td align='center'>
+                        </td>
+
+                        <!-- Map -->
+                        <td align='center'>
+                          <a href='https://www.google.com/maps/place/{$data['latlokasi']},{$data['longlokasi']}' target='_blank' style='cursor:pointer' title='Cek Koordinat'>$map</a>
+                        </td>
+
+                        <td><a href='?hapus={$data['idgangguan']}&awal={$current_awal}&akhir={$current_akhir}&unit={$unit}' class='btn btn-sm btn-danger' onclick=\"return confirm('Yakin hapus?')\">Hapus</a></td>
+                    </tr>";
+                }
+                $no++;
+            }
         }
         ?>
       </tbody>

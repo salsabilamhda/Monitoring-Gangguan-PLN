@@ -119,6 +119,30 @@
                 $(this).parent().parent().prev().click(); // click the item to make it drop
             }
         });
+
+        // Add active class on click for iframe navigation
+        $("#sidebar-menu a").on("click", function (e) {
+            var $this = $(this);
+            // Intercept dashboard to avoid full page reload
+            if ($this.attr('href') === 'index.php') {
+                e.preventDefault();
+                $('iframe[name="frame2367"]').attr('src', 'rekapharian.php');
+            } else if ($this.attr('href') === 'javascript:void(0);' || $this.parent().hasClass('has_sub')) {
+                return;
+            }
+
+            // Remove active from all links and parent LIs
+            $("#sidebar-menu a").removeClass("active");
+            $("#sidebar-menu li").removeClass("active");
+
+            // Add active to clicked link and parent LI
+            $this.addClass("active");
+            $this.parent().addClass("active");
+
+            // Traverse up and keep parents active
+            $this.parents('.has_sub').addClass("active");
+            $this.parents('.has_sub').find('> a').addClass("active");
+        });
     },
     MainApp.prototype.Preloader = function () {
         $(window).load(function() {

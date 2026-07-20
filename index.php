@@ -13,7 +13,7 @@
 
         <link href="assets/css/bootstrap.min.css" rel="stylesheet" type="text/css">
         <link href="assets/css/icons.css" rel="stylesheet" type="text/css">
-        <link href="assets/css/style.css" rel="stylesheet" type="text/css">
+        <link href="assets/css/style.css?v=<?php echo time(); ?>" rel="stylesheet" type="text/css">
         <style>
             html, body, #wrapper {
                 width: 100vw !important;
@@ -102,8 +102,8 @@
                         <ul>
                             <li class="menu-title">Main</li>
 
-                            <li>
-                                <a href="index.php" class="waves-effect">
+                            <li class="active">
+                                <a href="index.php" class="waves-effect active">
                                     <i class="mdi mdi-airplay"></i>
                                    <span> Dashboard <!--<span class="badge badge-pill badge-primary float-right">7</span>--></span>
                                 </a>
@@ -435,7 +435,7 @@ return true;
                      
                                 
                                  <div style="width: 100%; margin: 0; padding: 0 15px; height: calc(100vh - 130px); box-sizing: border-box; overflow: hidden;">
-                                     <iframe allowTransparency="true" frameborder="0" scrolling="auto" style="width:100%; height:100%; border:none;" name="frame2367" src='pages-404.html'></iframe>
+                                     <iframe allowTransparency="true" frameborder="0" scrolling="auto" style="width:100%; height:100%; border:none;" name="frame2367" src='rekapharian.php'></iframe>
                                  </div>
                              </div>                            <!-- end page title end breadcrumb -->
                             
@@ -469,7 +469,7 @@ return true;
         <script src="assets/js/jquery.nicescroll.js"></script>
 
         <!-- App js -->
-        <script src="assets/js/app.js"></script>
+        <script src="assets/js/app.js?v=<?php echo time(); ?>"></script>
 
     </body>
 </html>

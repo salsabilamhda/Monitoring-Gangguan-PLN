@@ -2819,27 +2819,25 @@ body.fixed-left .side-menu.left {
 
 #sidebar-menu ul ul li.active a {
   color: #242c6d;
+  background-color: rgba(36, 44, 109, 0.08);
+  font-weight: 600;
+  border-radius: 0 4px 4px 0;
+  box-shadow: inset 3px 0 0 #242c6d, 0 2px 8px rgba(36, 44, 109, 0.1);
 }
 
-#sidebar-menu ul ul li.active a:before {
-  content: "\F12F";
-  font: normal normal normal 24px/1 "Material Design Icons";
-  position: absolute;
-  font-size: 8px;
-  left: 42px;
-  color: #242c6d;
-  top: 15px;
-}
+
 
 #sidebar-menu ul ul a {
   color: rgba(45, 59, 72, 0.8);
   display: block;
   padding: 12px 25px 12px 60px;
   font-size: 14px;
+  transition: all 0.2s ease;
 }
 
 #sidebar-menu ul ul a:hover {
-  color: #2d3b48;
+  color: #242c6d;
+  background-color: rgba(36, 44, 109, 0.05);
 }
 
 #sidebar-menu ul ul a i {
@@ -2856,10 +2854,12 @@ body.fixed-left .side-menu.left {
   padding: 10px 25px;
   margin: 3px 0;
   background-color: #ffffff;
+  transition: all 0.2s ease;
 }
 
 #sidebar-menu > ul > li > a:hover {
   color: #242c6d;
+  background-color: rgba(36, 44, 109, 0.05);
   text-decoration: none;
 }
 
@@ -2902,7 +2902,8 @@ body.fixed-left .side-menu.left {
 
 #sidebar-menu > ul > li > a.active {
   color: #242c6d;
-  background-color: rgba(36, 44, 109, 0.15);
+  background-color: rgba(36, 44, 109, 0.1);
+  box-shadow: inset 4px 0 0 #242c6d, 0 4px 12px rgba(36, 44, 109, 0.15);
 }
 
 #sidebar-menu > ul > li > a.active i {

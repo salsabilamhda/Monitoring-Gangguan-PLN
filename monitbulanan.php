@@ -64,6 +64,13 @@ include "connect.php";
     table.dataTable {
       width: 100% !important;
     }
+    .table-responsive {
+      width: 100% !important;
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+    }
     /* Styling buttons for DataTables */
     .dt-buttons .dt-button {
       background: #242c6d !important;
@@ -161,7 +168,8 @@ include "connect.php";
 
 <div class="card shadow-sm border-0">
   <div class="card-body">
-    <table id="tabelPegawai" class="display nowrap" style="width:100%">
+    <div class="table-responsive">
+      <table id="tabelPegawai" class="display nowrap" style="width:100%">
       <thead>
         <tr>
           <th rowspan="2">No</th>
@@ -357,13 +365,14 @@ else  if ($datatotal < 9)
         ?>
       </tbody>
     </table>
+    </div>
   </div>
 </div>
 
   <script>
     $(document).ready(function() {
       var table = $('#tabelPegawai').DataTable({
-        scrollX: true,
+        scrollX: false,
         paging: true,
         dom: 'Bfrtip',
         buttons: ['excelHtml5', 'pdfHtml5', 'print'],

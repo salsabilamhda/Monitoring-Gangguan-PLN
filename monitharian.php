@@ -68,6 +68,13 @@ if(isset($_GET['hapus'])){
     table.dataTable {
       width: 100% !important;
     }
+    .table-responsive {
+      width: 100% !important;
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+    }
     .img-thumb {
       width: 30px;
       height: 30px;
@@ -129,6 +136,7 @@ if(isset($_GET['hapus'])){
       $map = '<img src ="map.png" />';
       $lokasi='https://www.google.com/maps/place/';
       ?>
+    <div class="table-responsive">
     <table id="tabelPegawai" class="display nowrap" style="width:100%">
       <thead>
         <tr>
@@ -320,6 +328,7 @@ if(isset($_GET['hapus'])){
       </tbody>
     </table>
     </div>
+    </div>
   </div>
 
   <!-- Modal Galeri -->
@@ -344,7 +353,7 @@ if(isset($_GET['hapus'])){
     // DataTables
     $(document).ready(function() {
       var table = $('#tabelPegawai').DataTable({
-        scrollX: true,
+        scrollX: false,
         paging: true,
         dom: 'Bfrtip',
         buttons: ['excelHtml5', 'pdfHtml5', 'print'],

@@ -25,9 +25,23 @@
         <style>
     .content {
       display: none;
-          }
+    }
     .content.active {
       display: block;
+    }
+    body {
+      padding: 10px 15px 80px 15px !important;
+      background-color: #f4f6f9 !important;
+      overflow-y: auto !important;
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch;
+    }
+    .card {
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      border: none;
+      max-width: 100%;
+      overflow-x: auto;
     }
   </style>
 
@@ -275,8 +289,10 @@ include "connect.php";
                                                  
                                                   <input type="file" accept="image/*" class="form-control"  name="file2"  />             
                                             </div>  </div>
-                                                  <button type="submit" class="btn btn-primary btn-lg btn-block">Submit</button>
-                                    </div>  </form>  
+                                                   <button type="submit" class="btn btn-primary btn-lg btn-block">Submit</button>
+                                    </div>
+                                    </div>
+                                    </form>  
                                   
         <!-- jQuery  -->
         <script src="assets/js/jquery.min.js"></script>

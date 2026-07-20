@@ -30,14 +30,27 @@
       display: block;
     }
     body {
-        padding: 5px 10px !important;
+        padding: 0px 10px !important;
         background-color: #f4f6f9 !important;
+    }
+    .page-title {
+        margin-top: 5px !important;
+        margin-bottom: 10px !important;
     }
     .card {
         margin-bottom: 10px !important;
     }
   </style>
-
+  <script>
+    function resizeIframe(obj) {
+      if (obj && obj.contentWindow && obj.contentWindow.document) {
+        var wrapper = obj.contentWindow.document.getElementById('content-wrapper');
+        if (wrapper) {
+          obj.style.height = (wrapper.scrollHeight + 40) + 'px';
+        }
+      }
+    }
+  </script>
     </head>
 
 
@@ -77,8 +90,8 @@ include "connect.php";
                                      </div>  
                                      </div>
                                      </form>  
-                                      <div style="margin: 10px 0 0 0; height: calc(100vh - 210px); overflow: hidden;">
-                                          <iframe allowTransparency="true" frameborder="0" scrolling="auto" style="width:100%; height:100%; border:none;" name="frame23" src="monitharian.php" ></iframe>
+                                      <div style="width: 100%; margin: 10px 0 0 0; overflow: hidden;">
+                                          <iframe onload="resizeIframe(this)" allowTransparency="true" frameborder="0" scrolling="no" style="width:100%; border:none;" name="frame23" src="monitharian.php" ></iframe>
                                       </div>
                                   
         <!-- jQuery  -->

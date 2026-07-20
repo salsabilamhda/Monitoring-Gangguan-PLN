@@ -60,10 +60,7 @@ include "connect.php";
     #tabelPegawai_wrapper,
     .dataTables_scroll,
     .dataTables_scrollHead,
-    .dataTables_scrollHeadInner,
-    .dataTables_scrollHeadInner table,
     .dataTables_scrollBody,
-    .dataTables_scrollBody table,
     table.dataTable {
       width: 100% !important;
     }
@@ -101,6 +98,7 @@ include "connect.php";
 
 </head>
 <body>
+<div id="content-wrapper">
       <?php
       $tahun = !empty($_REQUEST['tahun']) ? $_REQUEST['tahun'] : date('Y');
       $kategori = !empty($_REQUEST['option']) ? $_REQUEST['option'] : 'ALL';
@@ -364,17 +362,28 @@ else  if ($datatotal < 9)
 
   <script>
     $(document).ready(function() {
-      $('#tabelPegawai').DataTable({
+      var table = $('#tabelPegawai').DataTable({
         scrollX: true,
-        scrollY: 'calc(100vh - 270px)',
-        scrollCollapse: true,
         paging: true,
         dom: 'Bfrtip',
         buttons: ['excelHtml5', 'pdfHtml5', 'print'],
         orderCellsTop: true
       });
+
+      table.on('draw', function() {
+        if (window.parent && typeof window.parent.resizeIframe === 'function') {
+          var iframe = window.parent.document.getElementsByName('frame23')[0];
+          window.parent.resizeIframe(iframe);
+        }
+      });
+
+      if (window.parent && typeof window.parent.resizeIframe === 'function') {
+        var iframe = window.parent.document.getElementsByName('frame23')[0];
+        window.parent.resizeIframe(iframe);
+      }
     });
   </script>
 
+</div>
 </body>
 </html>

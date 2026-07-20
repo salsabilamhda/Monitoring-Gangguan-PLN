@@ -63,10 +63,7 @@ if(isset($_GET['hapus'])){
     #tabelPegawai_wrapper,
     .dataTables_scroll,
     .dataTables_scrollHead,
-    .dataTables_scrollHeadInner,
-    .dataTables_scrollHeadInner table,
     .dataTables_scrollBody,
-    .dataTables_scrollBody table,
     table.dataTable {
       width: 100% !important;
     }
@@ -101,6 +98,7 @@ if(isset($_GET['hapus'])){
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
+<div id="content-wrapper">
   
   <div class="card shadow-sm border-0">
     <div class="card-body">
@@ -323,15 +321,25 @@ if(isset($_GET['hapus'])){
   <script>
     // DataTables
     $(document).ready(function() {
-      $('#tabelPegawai').DataTable({
+      var table = $('#tabelPegawai').DataTable({
         scrollX: true,
-        scrollY: 'calc(100vh - 150px)',
-        scrollCollapse: true,
         paging: true,
         dom: 'Bfrtip',
         buttons: ['excelHtml5', 'pdfHtml5', 'print'],
         orderCellsTop: true
       });
+
+      table.on('draw', function() {
+        if (window.parent && typeof window.parent.resizeIframe === 'function') {
+          var iframe = window.parent.document.getElementsByName('frame23')[0];
+          window.parent.resizeIframe(iframe);
+        }
+      });
+
+      if (window.parent && typeof window.parent.resizeIframe === 'function') {
+        var iframe = window.parent.document.getElementsByName('frame23')[0];
+        window.parent.resizeIframe(iframe);
+      }
     });
 
     // Galeri modal
@@ -360,5 +368,6 @@ if(isset($_GET['hapus'])){
     });
   </script>
 
+</div>
 </body>
 </html>

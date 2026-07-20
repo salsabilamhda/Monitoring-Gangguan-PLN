@@ -28,7 +28,7 @@
                 margin-left: 240px !important;
                 width: calc(100vw - 240px) !important;
                 max-width: calc(100vw - 240px) !important;
-                height: calc(100vh - 70px) !important;
+                height: 100vh !important;
                 overflow: hidden !important;
                 float: left !important;
                 box-sizing: border-box !important;
@@ -325,7 +325,7 @@
                               <!--</li>-->
 
                                 <li class="list-inline-item dropdown notification-list">
-                                                                        <p style="color:white;"> <script type="text/javascript">
+                                                                        <p style="color:#242c6d; font-weight: 600; margin: 0; padding: 10px 0;"> <script type="text/javascript">
 function date_time(id)
 {
 date = new Date;
@@ -434,7 +434,7 @@ return true;
 
                      
                                 
-                                 <div style="margin: 0; padding: 15px; height: calc(100vh - 70px); box-sizing: border-box; overflow: hidden;">
+                                 <div style="width: 100%; margin: 0; padding: 0 15px; height: calc(100vh - 130px); box-sizing: border-box; overflow: hidden;">
                                      <iframe allowTransparency="true" frameborder="0" scrolling="auto" style="width:100%; height:100%; border:none;" name="frame2367" src='pages-404.html'></iframe>
                                  </div>
                              </div>                            <!-- end page title end breadcrumb -->

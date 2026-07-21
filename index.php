@@ -213,19 +213,19 @@
 
                             <li class="menu-title">Master Data</li>
                             <li>
-                                <a href="pages-404.html" target="frame2367" class="waves-effect"><i class="mdi mdi-database"></i><span> Master Unit </span></a>
+                                <a href="masterunit.php" target="frame2367" class="waves-effect"><i class="mdi mdi-database"></i><span> Master Unit </span></a>
                             </li>
                             <li>
-                                <a href="pages-404.html" target="frame2367" class="waves-effect"><i class="mdi mdi-database"></i><span> Master Penyulang</span></a>
+                                <a href="masterpenyulang.php" target="frame2367" class="waves-effect"><i class="mdi mdi-database"></i><span> Master Penyulang</span></a>
                             </li>
                             <li>
-                                <a href="pages-404.html" target="frame2367" class="waves-effect"><i class="mdi mdi-database"></i><span> Master Keypoint</span></a>
+                                <a href="masterkeypoint.php" target="frame2367" class="waves-effect"><i class="mdi mdi-database"></i><span> Master Keypoint</span></a>
                             </li>
                              <li>
-                                <a href="pages-404.html" target="frame2367" class="waves-effect"><i class="mdi mdi-database"></i><span> Master Cuaca</span></a>
+                                <a href="mastercuaca.php" target="frame2367" class="waves-effect"><i class="mdi mdi-database"></i><span> Master Cuaca</span></a>
                             </li>
                              <li>
-                                <a href="pages-404.html" target="frame2367" class="waves-effect"><i class="mdi mdi-database"></i><span> Master Jenis Gangguan</span></a>
+                                <a href="masterjenisgangguan.php" target="frame2367" class="waves-effect"><i class="mdi mdi-database"></i><span> Master Jenis Gangguan</span></a>
                             </li>
                           <!--  <li class="has_sub">
                                 <a href="javascript:void(0);" class="waves-effect"><i class="mdi mdi-map-marker-multiple"></i><span> Maps </span> <span class="badge badge-pill badge-danger float-right">2</span></a>

@@ -4,7 +4,7 @@ require_once __DIR__ . '/mysql_shim.php';
 $host  = "localhost";
 $user  = "root";
 $pass  = "";
-$dbase = "jart2779"; // Nama database di MySQL lokal
+$dbase = "jart2779_jaringan"; // Nama database di MySQL lokal
 
 $koneksi = mysql_connect($host,$user,$pass);
 

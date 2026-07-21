@@ -4,7 +4,7 @@
         <meta charset="utf-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
-        <title>Zoter - Responsive Bootstrap 4 Admin Dashboard</title>
+        <title>Rekap Tahunan - Monit Gangguan</title>
         <meta content="Admin Dashboard" name="description" />
         <meta content="Mannatthemes" name="author" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -56,51 +56,42 @@
 
     <body class="fixed-left">
 
-    <h4 class="page-title">Rekap Bulanan</h4>
-    <form action="monitbulanan.php" target="frame23" method="POST" enctype="multipart/form-data">
+    <h4 class="page-title">Rekap Tahunan</h4>
+    <form action="monittahunan.php" target="frame23" method="POST" enctype="multipart/form-data">
     <div class="card">
                                        
                                             <div class="row" style = "margin : 0px 0px 0px 10px; padding-top: 15px;">
-                                                <div class="col-md-4">
-                                                    <h6 class="sub-title mb-3">Pilih Bulan</h6>
-                                                    <select class="select2 form-control mb-3 custom-select" name="bulan" required>
-                                                        <option value="ALL" selected>Semua Bulan</option>
-                                                        <option value="1">Januari</option>
-                                                        <option value="2">Februari</option>
-                                                        <option value="3">Maret</option>
-                                                        <option value="4">April</option>
-                                                        <option value="5">Mei</option>
-                                                        <option value="6">Juni</option>
-                                                        <option value="7">Juli</option>
-                                                        <option value="8">Agustus</option>
-                                                        <option value="9">September</option>
-                                                        <option value="10">Oktober</option>
-                                                        <option value="11">November</option>
-                                                        <option value="12">Desember</option>
+                                                <div class="col-md-3">
+                                                    <h6 class="sub-title mb-3">Tahun Awal</h6>
+                                                    <select class="form-control select2" name="tahun_awal" required>
+                                                        <?php
+                                                        $current_year = (int)date('Y');
+                                                        for ($i = 2018; $i <= $current_year + 5; $i++) {
+                                                            $selected = ($i == $current_year - 4) ? 'selected' : '';
+                                                            echo "<option value='$i' $selected>$i</option>";
+                                                        }
+                                                        ?>
                                                     </select>
                                                 </div>
-                                                <div class="col-md-4">
-                                                    <h6 class="sub-title mb-3">Pilih Tahun</h6>
-                                                   <select class="select2 form-control mb-3 custom-select" name = "tahun" required="" >
-                                                <option value = ""></option>
-                                             <?php
-                $tahunSekarang = '2020';
-                $tahunMaju = 30; // contoh: tampilkan 10 tahun ke depan
-                for ($i = $tahunSekarang; $i <= $tahunSekarang + $tahunMaju; $i++) {
-                    $selected = ($i == date('Y')) ? 'selected' : '';
-                    echo "<option value=\"$i\" $selected>$i</option>";
-                }
-            ?>
-                                                       </select>
+                                                <div class="col-md-3">
+                                                    <h6 class="sub-title mb-3">Tahun Akhir</h6>
+                                                    <select class="form-control select2" name="tahun_akhir" required>
+                                                        <?php
+                                                        for ($i = 2018; $i <= $current_year + 5; $i++) {
+                                                            $selected = ($i == $current_year) ? 'selected' : '';
+                                                            echo "<option value='$i' $selected>$i</option>";
+                                                        }
+                                                        ?>
+                                                    </select>
                                                 </div>
-                                                <div class="col-md-4">
+                                                <div class="col-md-3">
                                                    <h6 class="sub-title mb-3">Kategori Gangguan</h6>
                                                  <div class="form-check-inline my-1">
                                                                  <div class="custom-control custom-radio">
                                                                     <input type="radio" id="customRadio4" required = "" name="option" class="custom-control-input"
                                                                     value = "PMT">
                                                                     <label class="custom-control-label" for="customRadio4">PMT</label>
-                                                                </div>
+                                                                 </div>
                                                             </div>
                                                             <div class="form-check-inline my-1">
                                                                 <div class="custom-control custom-radio">
@@ -116,37 +107,33 @@
                                                                     <label class="custom-control-label" for="customRadio6">ALL</label>
                                                                 </div>
                                                             </div>
-                                                            
-                                            </div>  </div>
-                                              <div class="card-body bootstrap-select-1">
-                                        
-                                                    <h6 class="sub-title my-3">Unit</h6>
-                                                 <select class="form-control select2" name="unit" required>
-    <option value="">Pilih Unit</option>
-
-    <?php
-    include "connect.php";
-
-    $v = mysql_query("SELECT * FROM kodeunit ORDER BY uraian");
-
-    while($r = mysql_fetch_assoc($v))
-    {
-        ?>
-        <option value="<?php echo $r['kodeunit']; ?>" <?php echo ($r['kodeunit'] == '5125') ? 'selected' : ''; ?>>
-            <?php echo $r['uraian']; ?>
-        </option>
-        <?php
-    }
-    ?>
-</select>
-                                                    
                                                 </div>
-                                               <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
+                                                <div class="col-md-3">
+                                                    <h6 class="sub-title mb-3">Unit</h6>
+                                                    <select class="form-control select2" name="unit" required>
+                                                        <option value="">Pilih Unit</option>
+                                                        <?php
+                                                        include "connect.php";
+                                                        $v = mysql_query("SELECT * FROM kodeunit ORDER BY uraian");
+                                                        while($r = mysql_fetch_assoc($v))
+                                                        {
+                                                            ?>
+                                                            <option value="<?php echo $r['kodeunit']; ?>" <?php echo ($r['kodeunit'] == '5125') ? 'selected' : ''; ?>>
+                                                                <?php echo $r['uraian']; ?>
+                                                            </option>
+                                                            <?php
+                                                        }
+                                                        ?>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
+                                            </div>
                                      </div>  
-                                     </div>
                                      </form>  
                                       <div style="width: 100%; margin: 10px 0 0 0; overflow: hidden;">
-                                          <iframe onload="resizeIframe(this)" allowTransparency="true" frameborder="0" scrolling="no" style="width:100%; border:none;" name="frame23" src="monitbulanan.php" ></iframe>
+                                          <iframe onload="resizeIframe(this)" allowTransparency="true" frameborder="0" scrolling="no" style="width:100%; border:none;" name="frame23" src="monittahunan.php" ></iframe>
                                       </div>
                                   
         <!-- jQuery  -->
@@ -159,46 +146,12 @@
         <script src="assets/js/jquery.blockUI.js"></script>
         <script src="assets/js/waves.js"></script>
         <script src="assets/js/jquery.nicescroll.js"></script>
- <!-- Plugins js -->
- <script src="assets/plugins/timepicker/moment.js"></script>
-        <script src="assets/plugins/timepicker/tempusdominus-bootstrap-4.js"></script>
-        <script src="assets/plugins/timepicker/bootstrap-material-datetimepicker.js"></script>
-        <script src="assets/plugins/clockpicker/jquery-clockpicker.min.js"></script>
-        <script src="assets/plugins/colorpicker/jquery-asColor.js" type="text/javascript"></script>
-        <script src="assets/plugins/colorpicker/jquery-asGradient.js" type="text/javascript"></script>
-        <script src="assets/plugins/colorpicker/jquery-asColorPicker.min.js" type="text/javascript"></script>
         <script src="assets/plugins/select2/select2.min.js" type="text/javascript"></script>
- 
-        <script src="assets/plugins/bootstrap-colorpicker/js/bootstrap-colorpicker.min.js"></script>
-        <script src="assets/plugins/bootstrap-datepicker/js/bootstrap-datepicker.min.js"></script>
-        <script src="assets/plugins/bootstrap-maxlength/bootstrap-maxlength.min.js" type="text/javascript"></script>
-        <script src="assets/plugins/bootstrap-touchspin/js/jquery.bootstrap-touchspin.min.js" type="text/javascript"></script>
         <script>
-        $('#date-format').bootstrapMaterialDatePicker({
-    format: 'YYYY-MM-DD HH:mm',
-    lang: 'en',              // Bahasa
-    weekStart: 1,            // Senin sebagai awal minggu
-    cancelText: 'Batal',
-    nowButton: true,
-    switchOnClick: true,
-    time: true,
-    date: true
-});
- $('#date-format2').bootstrapMaterialDatePicker({
-    format: 'YYYY-MM-DD HH:mm',
-    lang: 'en',              // Bahasa
-    weekStart: 1,            // Senin sebagai awal minggu
-    cancelText: 'Batal',
-    nowButton: true,
-    switchOnClick: true,
-    time: true,
-    date: true
-});
-
-          </script>
-        <!-- Plugins Init js -->
-        <script src="assets/pages/form-advanced.js"></script>
-         
+            $(document).ready(function() {
+                $('.select2').select2();
+            });
+        </script>
         <!-- App js -->
         <script src="assets/js/app.js"></script>
 

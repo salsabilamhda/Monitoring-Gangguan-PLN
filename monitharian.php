@@ -31,6 +31,9 @@ if(isset($_GET['hapus'])){
       padding: 0 !important;
       margin: 0 !important;
     }
+    #content-wrapper {
+      padding-bottom: 80px !important;
+    }
     .card {
       border: none;
       border-radius: 12px;

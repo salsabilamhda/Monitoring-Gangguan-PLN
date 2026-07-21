@@ -129,7 +129,7 @@
                                 <ul class="list-unstyled">
                                     <li><a href="rekapharian.php" target="frame2367" class="waves-effect">Harian</a></li>
                                     <li><a href="rekapbulanan.php" target="frame2367" class="waves-effect">Bulanan</a></li>
-                                    <li><a href="pages-404.html" target="frame2367" class="waves-effect">Tahunan</a></li>
+                                    <li><a href="rekaptahunan.php" target="frame2367" class="waves-effect">Tahunan</a></li>
                                      <li><a href="rekapukurgardu.php" target="frame2367" class="waves-effect">Ukur Gardu</a></li>
                                 </ul>
                             </li>

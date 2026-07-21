@@ -5,7 +5,7 @@ include "connect.php";
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>Monitor Gangguan</title>
+  <title>Monitor Gangguan - Rekap Tahunan</title>
 
   <style>
     body {
@@ -110,10 +110,10 @@ include "connect.php";
 <body>
 <div id="content-wrapper">
       <?php
-      $tahun = !empty($_REQUEST['tahun']) ? $_REQUEST['tahun'] : date('Y');
       $kategori = !empty($_REQUEST['option']) ? $_REQUEST['option'] : 'ALL';
       $unit = !empty($_REQUEST['unit']) ? $_REQUEST['unit'] : '5125';
-      $bulan = !empty($_REQUEST['bulan']) ? $_REQUEST['bulan'] : 'ALL';
+      $tahun_awal = !empty($_REQUEST['tahun_awal']) ? (int)$_REQUEST['tahun_awal'] : (int)date('Y') - 4;
+      $tahun_akhir = !empty($_REQUEST['tahun_akhir']) ? (int)$_REQUEST['tahun_akhir'] : (int)date('Y');
       
       $merah = '<span class="badge-dot bg-red" title="Range 4 - 8"></span>';
       $hijau = '<span class="badge-dot bg-green" title="Range 1 - 3"></span>';
@@ -122,17 +122,11 @@ include "connect.php";
       $query2 = "select * from kodeunit where kodeunit = '$unit'"; 
       $hasil2 = mysql_query ($query2);
       $data2 = mysql_fetch_array($hasil2);
-
-      $months_list = [
-          1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun',
-          7 => 'Jul', 8 => 'Ags', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'
-      ];
       
-      $active_months = [];
-      if ($bulan == 'ALL') {
-          $active_months = $months_list;
-      } else {
-          $active_months = [(int)$bulan => $months_list[(int)$bulan]];
+      // Ambil list tahun dari range
+      $years = [];
+      for ($y = $tahun_awal; $y <= $tahun_akhir; $y++) {
+          $years[] = $y;
       }
       ?>       
 
@@ -154,17 +148,15 @@ include "connect.php";
             <td class="text-dark fw-semibold"><?php echo isset($data2['uraian']) ? $data2['uraian'] : 'SEMUA UNIT'; ?></td>
           </tr>
           <tr>
-            <td class="fw-bold text-secondary">Bulan / Tahun</td>
+            <td class="fw-bold text-secondary">Rentang Tahun</td>
             <td>:</td>
-            <td class="text-dark fw-semibold">
-                <?php echo ($bulan == 'ALL' ? 'Semua Bulan' : $months_list[(int)$bulan]) . " " . $tahun; ?>
-            </td>
+            <td class="text-dark fw-semibold"><?php echo $tahun_awal . " - " . $tahun_akhir; ?></td>
           </tr>
         </table>
       </div>
       <!-- Kategori Keterangan -->
       <div class="col-md-6 ps-md-4">
-        <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 1px;">Kategori Keandalan</h6>
+        <h6 class="text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 1px;">Kategori Keandalan (Tahunan)</h6>
         <div class="d-flex flex-column gap-2" style="font-size: 13px;">
           <div class="d-flex align-items-center">
             <span class="badge-dot bg-green me-2"></span>
@@ -191,19 +183,19 @@ include "connect.php";
       <thead>
         <tr>
           <th rowspan="2">No</th>
-           <th rowspan="2">ULP</th>
-            <th rowspan="2">Penyulang</th>
-             <th rowspan="2">Recloser</th>
-             <th rowspan="2">Status</th>
-             <th colspan="2">Total</th>
-          <?php foreach ($active_months as $m_num => $m_name) { ?>
-            <th colspan="2"><?php echo $m_name; ?></th>
+          <th rowspan="2">ULP</th>
+          <th rowspan="2">Penyulang</th>
+          <th rowspan="2">Recloser</th>
+          <th rowspan="2">Status</th>
+          <th colspan="2">Total</th>
+          <?php foreach ($years as $yr) { ?>
+            <th colspan="2"><?php echo $yr; ?></th>
           <?php } ?>
         </tr>
         <tr>
           <th>P</th>
           <th>T</th>
-          <?php foreach ($active_months as $m_num => $m_name) { ?>
+          <?php foreach ($years as $yr) { ?>
             <th>P</th>
             <th>T</th>
           <?php } ?>
@@ -213,43 +205,50 @@ include "connect.php";
         <?php
         $no = 1;
 
-        if ($kategori == 'REC' && $unit == '5125'){
-         $query = "SELECT * FROM v_gangguan where tahun = '$tahun'";}
-         else if ($kategori == 'REC' && $unit != '5125')
-         {
-         $query = "SELECT * FROM v_gangguan where tahun = '$tahun' and unit = '$unit'";}
-         else if ($kategori != 'REC' && $kategori != 'ALL' && $unit != '5125')
-         {
-         $query = "SELECT *,'' as keterangan FROM v_gangguan2 where tahun = '$tahun' and unit = '$unit'";}
-          else if ($kategori != 'REC' && $kategori != 'ALL' && $unit == '5125'){
-         $query = "SELECT *,'' as keterangan FROM v_gangguan2 where tahun = '$tahun'";}
-       else if ($kategori == 'ALL' && $unit != '5125')
- {
- $query = "SELECT * 
- FROM v_gangguanall 
- where tahun = '$tahun' and unit = '$unit'";
- }
- 
- else if ($kategori == 'ALL' && $unit == '5125'){
- $query = "SELECT * 
- FROM v_gangguanall 
- where tahun = '$tahun'";
- }
+        $select_parts = [
+            "uraian",
+            "uraianpenyul",
+            "keterangan",
+            "unit",
+            "SUM(IF(YEAR(tglgangguan) BETWEEN $tahun_awal AND $tahun_akhir AND kategorigangguan = 'PERMANEN', hitung, 0)) as permanentotal",
+            "SUM(IF(YEAR(tglgangguan) BETWEEN $tahun_awal AND $tahun_akhir AND kategorigangguan = 'TEMPORER', hitung, 0)) as temporertotal"
+        ];
+        foreach ($years as $y) {
+            $select_parts[] = "SUM(IF(YEAR(tglgangguan) = $y AND kategorigangguan = 'PERMANEN', hitung, 0)) as permanen_$y";
+            $select_parts[] = "SUM(IF(YEAR(tglgangguan) = $y AND kategorigangguan = 'TEMPORER', hitung, 0)) as temporer_$y";
+        }
 
-        $hasil = mysql_query ($query) or die(mysql_error());
+        $sql_select = implode(", ", $select_parts);
+
+        $where_clauses = [];
+        if ($kategori == 'REC') {
+            $where_clauses[] = "kat_gangguan = 'REC'";
+        } elseif ($kategori == 'PMT') {
+            $where_clauses[] = "kat_gangguan = 'PMT'";
+        }
+
+        if ($unit != '5125') {
+            $where_clauses[] = "unit = '$unit'";
+        }
+
+        $where_sql = "";
+        if (!empty($where_clauses)) {
+            $where_sql = "WHERE " . implode(" AND ", $where_clauses);
+        }
+
+        $query = "SELECT $sql_select 
+                  FROM v_datagangguan 
+                  $where_sql 
+                  GROUP BY uraian, uraianpenyul, keterangan, unit 
+                  ORDER BY unit ASC, uraianpenyul ASC";
+
+        $hasil = mysql_query($query) or die(mysql_error());
         while ($data = mysql_fetch_array($hasil))
         {	
-            // Hitung total dari bulan yang aktif saja
-            $p_total = 0;
-            $t_total = 0;
-            foreach ($active_months as $m_num => $m_name) {
-                $p_total += (int)$data['permanen' . $m_num];
-                $t_total += (int)$data['temporer' . $m_num];
-            }
-            $datatotal = $p_total + $t_total;
+            $datatotal = $data['permanentotal'] + $data['temporertotal'];
             
-            // Jika filter bulan aktif, dan tidak ada gangguan, lewati
-            if ($bulan != 'ALL' && $datatotal == 0) {
+            // Jika tidak ada gangguan pada rentang tahun terpilih, lewati
+            if ($datatotal == 0) {
                 continue;
             }
             
@@ -268,12 +267,12 @@ include "connect.php";
             echo "<td>" . htmlspecialchars($data['uraianpenyul']) . "</td>";
             echo "<td>" . htmlspecialchars($data['keterangan']) . "</td>";
             echo "<td align='center'>$status_indicator</td>";
-            echo "<td align='center'>$p_total</td>";
-            echo "<td align='center'>$t_total</td>";
+            echo "<td align='center'>" . (int)$data['permanentotal'] . "</td>";
+            echo "<td align='center'>" . (int)$data['temporertotal'] . "</td>";
 
-            foreach ($active_months as $m_num => $m_name) {
-                $p_val = (int)$data['permanen' . $m_num];
-                $t_val = (int)$data['temporer' . $m_num];
+            foreach ($years as $yr) {
+                $p_val = (int)$data['permanen_' . $yr];
+                $t_val = (int)$data['temporer_' . $yr];
                 echo "<td align='center'>$p_val</td>";
                 echo "<td align='center'>$t_val</td>";
             }

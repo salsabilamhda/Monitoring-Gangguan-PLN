@@ -210,8 +210,8 @@ include "connect.php";
             "uraianpenyul",
             "keterangan",
             "unit",
-            "SUM(IF(YEAR(tglgangguan) BETWEEN $tahun_awal AND $tahun_akhir AND kategorigangguan = 'PERMANEN', hitung, 0)) as permanentotal",
-            "SUM(IF(YEAR(tglgangguan) BETWEEN $tahun_awal AND $tahun_akhir AND kategorigangguan = 'TEMPORER', hitung, 0)) as temporertotal"
+            "SUM(IF(kategorigangguan = 'PERMANEN', hitung, 0)) as permanentotal",
+            "SUM(IF(kategorigangguan = 'TEMPORER', hitung, 0)) as temporertotal"
         ];
         foreach ($years as $y) {
             $select_parts[] = "SUM(IF(YEAR(tglgangguan) = $y AND kategorigangguan = 'PERMANEN', hitung, 0)) as permanen_$y";
@@ -221,6 +221,8 @@ include "connect.php";
         $sql_select = implode(", ", $select_parts);
 
         $where_clauses = [];
+        $where_clauses[] = "YEAR(tglgangguan) BETWEEN $tahun_awal AND $tahun_akhir";
+
         if ($kategori == 'REC') {
             $where_clauses[] = "kat_gangguan = 'REC'";
         } elseif ($kategori == 'PMT') {

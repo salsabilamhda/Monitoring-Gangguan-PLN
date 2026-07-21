@@ -213,28 +213,44 @@ include "connect.php";
         <?php
         $no = 1;
 
-        if ($kategori == 'REC' && $unit == '5125'){
-         $query = "SELECT * FROM v_gangguan where tahun = '$tahun'";}
-         else if ($kategori == 'REC' && $unit != '5125')
-         {
-         $query = "SELECT * FROM v_gangguan where tahun = '$tahun' and unit = '$unit'";}
-         else if ($kategori != 'REC' && $kategori != 'ALL' && $unit != '5125')
-         {
-         $query = "SELECT *,'' as keterangan FROM v_gangguan2 where tahun = '$tahun' and unit = '$unit'";}
-          else if ($kategori != 'REC' && $kategori != 'ALL' && $unit == '5125'){
-         $query = "SELECT *,'' as keterangan FROM v_gangguan2 where tahun = '$tahun'";}
-       else if ($kategori == 'ALL' && $unit != '5125')
- {
- $query = "SELECT * 
- FROM v_gangguanall 
- where tahun = '$tahun' and unit = '$unit'";
- }
- 
- else if ($kategori == 'ALL' && $unit == '5125'){
- $query = "SELECT * 
- FROM v_gangguanall 
- where tahun = '$tahun'";
- }
+        $select_parts = [
+            "uraian",
+            "uraianpenyul",
+            "keterangan",
+            "unit",
+            "SUM(IF(kategorigangguan = 'PERMANEN', hitung, 0)) as permanentotal",
+            "SUM(IF(kategorigangguan = 'TEMPORER', hitung, 0)) as temporertotal"
+        ];
+        for ($m = 1; $m <= 12; $m++) {
+            $select_parts[] = "SUM(IF(MONTH(tglgangguan) = $m AND kategorigangguan = 'PERMANEN', hitung, 0)) as permanen$m";
+            $select_parts[] = "SUM(IF(MONTH(tglgangguan) = $m AND kategorigangguan = 'TEMPORER', hitung, 0)) as temporer$m";
+        }
+
+        $sql_select = implode(", ", $select_parts);
+
+        $where_clauses = [];
+        $where_clauses[] = "YEAR(tglgangguan) = $tahun";
+
+        if ($kategori == 'REC') {
+            $where_clauses[] = "kat_gangguan = 'REC'";
+        } elseif ($kategori == 'PMT') {
+            $where_clauses[] = "kat_gangguan = 'PMT'";
+        }
+
+        if ($unit != '5125') {
+            $where_clauses[] = "unit = '$unit'";
+        }
+
+        $where_sql = "";
+        if (!empty($where_clauses)) {
+            $where_sql = "WHERE " . implode(" AND ", $where_clauses);
+        }
+
+        $query = "SELECT $sql_select 
+                  FROM v_datagangguan 
+                  $where_sql 
+                  GROUP BY uraian, uraianpenyul, keterangan, unit 
+                  ORDER BY unit ASC, uraianpenyul ASC";
 
         $hasil = mysql_query ($query) or die(mysql_error());
         while ($data = mysql_fetch_array($hasil))

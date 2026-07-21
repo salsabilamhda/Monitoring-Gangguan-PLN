@@ -4,7 +4,7 @@ require_once __DIR__ . '/mysql_shim.php';
 $host  = "localhost";
 $user  = "root";
 $pass  = "";
-$dbase = "jart2779_jaringan";
+$dbase = "jart2779"; // Nama database di MySQL lokal
 
 $koneksi = mysql_connect($host,$user,$pass);
 
@@ -13,6 +13,4 @@ if(!$koneksi){
 }
 
 mysql_select_db($dbase,$koneksi);
-mysql_query("SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
-
 ?>

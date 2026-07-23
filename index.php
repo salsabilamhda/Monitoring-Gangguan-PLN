@@ -435,7 +435,7 @@ return true;
                      
                                 
                                  <div style="width: 100%; margin: 0; padding: 0 15px; height: calc(100vh - 130px); box-sizing: border-box; overflow: hidden;">
-                                     <iframe allowTransparency="true" frameborder="0" scrolling="auto" style="width:100%; height:100%; border:none;" name="frame2367" src='rekapharian.php'></iframe>
+                                     <iframe allowTransparency="true" frameborder="0" scrolling="auto" style="width:100%; height:100%; border:none;" name="frame2367" src='visualisasi.php'></iframe>
                                  </div>
                              </div>                            <!-- end page title end breadcrumb -->
                             

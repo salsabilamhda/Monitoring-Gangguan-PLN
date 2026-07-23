@@ -126,7 +126,7 @@
             // Intercept dashboard to avoid full page reload
             if ($this.attr('href') === 'index.php') {
                 e.preventDefault();
-                $('iframe[name="frame2367"]').attr('src', 'rekapharian.php');
+                $('iframe[name="frame2367"]').attr('src', 'visualisasi.php');
             } else if ($this.attr('href') === 'javascript:void(0);' || $this.parent().hasClass('has_sub')) {
                 return;
             }

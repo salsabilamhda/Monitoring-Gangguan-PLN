@@ -13,7 +13,28 @@ if(isset($_GET['hapus'])){
         }
     }
     mysql_query("DELETE FROM datagangguan WHERE idgangguan=$id_hapus") or die(mysql_error());
-    echo "<script>alert('Data berhasil dihapus');window.location='".$_SERVER['PHP_SELF']."?awal={$gabungawal}&akhir={$gabungakhir}&unit={$unit}';</script>";
+    ?>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <script src="assets/js/sweetalert2.all.min.js"></script>
+        <link href="assets/css/style.css" rel="stylesheet" type="text/css">
+    </head>
+    <body>
+    <script>
+        Swal.fire({
+            icon: 'success',
+            title: 'Sukses',
+            text: 'Data berhasil dihapus',
+            confirmButtonColor: '#242c6d'
+        }).then(() => {
+            window.location.href = '<?php echo $_SERVER['PHP_SELF']."?awal={$gabungawal}&akhir={$gabungakhir}&unit={$unit}"; ?>';
+        });
+    </script>
+    </body>
+    </html>
+    <?php
+    exit;
 }
 ?>
 
@@ -107,6 +128,7 @@ if(isset($_GET['hapus'])){
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/pdfmake.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/vfs_fonts.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/js/sweetalert2.all.min.js"></script>
 </head>
 <body>
 <div id="content-wrapper">
@@ -184,19 +206,19 @@ if(isset($_GET['hapus'])){
         } elseif ($gabungawal1 != '' && $gabungakhir2 != '') {
             if ($unit == '5125') {
                 $query = "SELECT * FROM v_datagangguan 
-                          WHERE tglgangguan BETWEEN '$gabungawal1' AND '$gabungakhir2'";
+                          WHERE DATE(tglgangguan) BETWEEN '$gabungawal1' AND '$gabungakhir2' ORDER BY tglgangguan DESC";
             } else {
                 $query = "SELECT * FROM v_datagangguan 
-                          WHERE tglgangguan BETWEEN '$gabungawal1' AND '$gabungakhir2' AND unit = '$unit'";
+                          WHERE DATE(tglgangguan) BETWEEN '$gabungawal1' AND '$gabungakhir2' AND unit = '$unit' ORDER BY tglgangguan DESC";
             }
         } elseif ($gabungawal != '' && $gabungakhir != '') {
             if ($unit == '5125') {
                 $query = "SELECT * FROM v_datagangguan 
-                          WHERE tglgangguan BETWEEN '$gabungawal' AND '$gabungakhir'";
+                          WHERE DATE(tglgangguan) BETWEEN '$gabungawal' AND '$gabungakhir' ORDER BY tglgangguan DESC";
             } else {
                 $query = "SELECT * FROM v_datagangguan 
-                          WHERE tglgangguan BETWEEN '$gabungawal' AND '$gabungakhir' 
-                          AND unit = '$unit'";
+                          WHERE DATE(tglgangguan) BETWEEN '$gabungawal' AND '$gabungakhir' 
+                          AND unit = '$unit' ORDER BY tglgangguan DESC";
             }
         }
         
@@ -244,7 +266,7 @@ if(isset($_GET['hapus'])){
                           <a href='https://www.google.com/maps/place/{$data['latlokasi']},{$data['longlokasi']}' target='_blank' style='cursor:pointer' title='Cek Koordinat'>$map</a>
                         </td>
 
-                        <td><a href='?hapus={$data['idgangguan']}&awal={$current_awal}&akhir={$current_akhir}&unit={$unit}' class='btn btn-sm btn-danger' onclick=\"return confirm('Yakin hapus?')\">Hapus</a></td>
+                        <td><a href='?hapus={$data['idgangguan']}&awal={$current_awal}&akhir={$current_akhir}&unit={$unit}' class='btn btn-sm btn-danger btn-delete'>Hapus</a></td>
                     </tr>";
                 } else if ($data['foto1'] != '') {
                     echo "<tr>
@@ -283,7 +305,7 @@ if(isset($_GET['hapus'])){
                           <a href='https://www.google.com/maps/place/{$data['latlokasi']},{$data['longlokasi']}' target='_blank' style='cursor:pointer' title='Cek Koordinat'>$map</a>
                         </td>
 
-                        <td><a href='?hapus={$data['idgangguan']}&awal={$current_awal}&akhir={$current_akhir}&unit={$unit}' class='btn btn-sm btn-danger' onclick=\"return confirm('Yakin hapus?')\">Hapus</a></td>
+                        <td><a href='?hapus={$data['idgangguan']}&awal={$current_awal}&akhir={$current_akhir}&unit={$unit}' class='btn btn-sm btn-danger btn-delete'>Hapus</a></td>
                     </tr>";
                 } else {
                     echo "<tr>
@@ -321,7 +343,7 @@ if(isset($_GET['hapus'])){
                           <a href='https://www.google.com/maps/place/{$data['latlokasi']},{$data['longlokasi']}' target='_blank' style='cursor:pointer' title='Cek Koordinat'>$map</a>
                         </td>
 
-                        <td><a href='?hapus={$data['idgangguan']}&awal={$current_awal}&akhir={$current_akhir}&unit={$unit}' class='btn btn-sm btn-danger' onclick=\"return confirm('Yakin hapus?')\">Hapus</a></td>
+                        <td><a href='?hapus={$data['idgangguan']}&awal={$current_awal}&akhir={$current_akhir}&unit={$unit}' class='btn btn-sm btn-danger btn-delete'>Hapus</a></td>
                     </tr>";
                 }
                 $no++;
@@ -351,7 +373,6 @@ if(isset($_GET['hapus'])){
       </div>
     </div>
   </div>
-
   <script>
     // DataTables
     $(document).ready(function() {
@@ -359,7 +380,33 @@ if(isset($_GET['hapus'])){
         scrollX: false,
         paging: true,
         dom: 'Bfrtip',
-        buttons: ['excelHtml5', 'pdfHtml5', 'print'],
+        buttons: [
+          {
+            extend: 'excelHtml5',
+            exportOptions: {
+              columns: [0, 1, 2, 3, 5, 7, 9, 10, 11, 17, 18, 19]
+            }
+          },
+          {
+            extend: 'pdfHtml5',
+            orientation: 'landscape',
+            pageSize: 'A4',
+            exportOptions: {
+              columns: [0, 1, 2, 3, 5, 7, 9, 10, 11, 17, 18, 19]
+            },
+            customize: function(doc) {
+              doc.defaultStyle.fontSize = 8;
+              doc.styles.tableHeader.fontSize = 9;
+              doc.content[1].table.widths = ['3%', '10%', '8%', '10%', '6%', '12%', '8%', '6%', '5%', '8%', '10%', '14%'];
+            }
+          },
+          {
+            extend: 'print',
+            exportOptions: {
+              columns: [0, 1, 2, 3, 5, 7, 9, 10, 11, 17, 18, 19]
+            }
+          }
+        ],
         orderCellsTop: true
       });
 
@@ -399,6 +446,27 @@ if(isset($_GET['hapus'])){
     $("#prevImg").click(function() {
       currentIndex = (currentIndex - 1 + imgList.length) % imgList.length;
       $("#modalImage").attr("src", imgList[currentIndex]);
+    });
+
+    // SweetAlert2 Delete Confirmation
+    $(document).on('click', '.btn-delete', function(e) {
+      e.preventDefault();
+      const url = $(this).attr('href');
+      
+      Swal.fire({
+        title: 'Apakah Anda yakin?',
+        text: "Data yang dihapus tidak dapat dikembalikan!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Ya, hapus!',
+        cancelButtonText: 'Batal'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = url;
+        }
+      });
     });
   </script>
 

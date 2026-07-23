@@ -98,17 +98,81 @@ $sql = "INSERT INTO datagangguan (
     '$latlokasi', '$longlokasi','$kodegangguan'
 )";
 
+// === Cek Duplikasi Data ===
+$dup_where = "";
+if (!empty($kodegangguan)) {
+    $dup_where = "kodegangguan = '$kodegangguan'";
+} else {
+    $dup_where = "tglgangguan = '$tglgangguan' AND unit = '$unit' AND penyulang = '$penyulang' AND keypointid = '$keypoint'";
+}
+
+$check = mysql_query("SELECT COUNT(*) FROM datagangguan WHERE $dup_where");
+$rowCheck = mysql_fetch_array($check);
+
+if ($rowCheck[0] > 0) {
+    echo "<!DOCTYPE html>
+    <html>
+    <head>
+        <script src='assets/js/sweetalert2.all.min.js'></script>
+        <link href='assets/css/style.css' rel='stylesheet' type='text/css'>
+    </head>
+    <body>
+    <script>
+        Swal.fire({
+            icon: 'warning',
+            title: 'Data Duplikat',
+            text: 'Data gangguan " . (!empty($kodegangguan) ? "dengan Kode Gangguan $kodegangguan" : "pada waktu/lokasi tersebut") . " sudah ada di database!',
+            confirmButtonColor: '#242c6d'
+        }).then(() => {
+            window.location.href = 'entridata.php';
+        });
+    </script>
+    </body>
+    </html>";
+    exit;
+}
+
 $result = mysql_query($sql);
 
 if ($result) {
-    echo "<script>
-        alert('Data berhasil disimpan!');
-        window.location.href = 'entridata.php';
-    </script>";
+    echo "<!DOCTYPE html>
+    <html>
+    <head>
+        <script src='assets/js/sweetalert2.all.min.js'></script>
+        <link href='assets/css/style.css' rel='stylesheet' type='text/css'>
+    </head>
+    <body>
+    <script>
+        Swal.fire({
+            icon: 'success',
+            title: 'Sukses',
+            text: 'Data berhasil disimpan!',
+            confirmButtonColor: '#242c6d'
+        }).then(() => {
+            window.location.href = 'entridata.php';
+        });
+    </script>
+    </body>
+    </html>";
 } else {
-    echo "<script>
-        alert('Gagal menyimpan data ke database.');
-        window.location.href = 'entridata.php';
-    </script>";
+    echo "<!DOCTYPE html>
+    <html>
+    <head>
+        <script src='assets/js/sweetalert2.all.min.js'></script>
+        <link href='assets/css/style.css' rel='stylesheet' type='text/css'>
+    </head>
+    <body>
+    <script>
+        Swal.fire({
+            icon: 'error',
+            title: 'Gagal',
+            text: 'Gagal menyimpan data ke database.',
+            confirmButtonColor: '#242c6d'
+        }).then(() => {
+            window.location.href = 'entridata.php';
+        });
+    </script>
+    </body>
+    </html>";
 }
 ?>

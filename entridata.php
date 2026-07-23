@@ -43,14 +43,75 @@
       max-width: 100%;
       overflow-x: auto;
     }
+    #importExcelModal {
+      bottom: 70px !important;
+    }
+    #importExcelModal .modal-content {
+      max-height: calc(100vh - 200px);
+      display: flex;
+      flex-direction: column;
+    }
+    #importExcelModal .modal-body {
+      overflow-y: auto;
+      flex: 1 1 auto;
+    }
   </style>
-
+    <script src="assets/js/sweetalert2.all.min.js"></script>
     </head>
 
 
     <body class="fixed-left">
 
-    <h4 class="page-title">Entri Data</h4>
+    <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
+        <h4 class="page-title mb-0">Entri Data</h4>
+        <button type="button" class="btn btn-success" data-toggle="modal" data-target="#importExcelModal">
+            <i class="mdi mdi-file-excel mr-1"></i> Import Excel
+        </button>
+    </div>
+
+    <div class="modal fade" id="importExcelModal" tabindex="-1" role="dialog" aria-labelledby="importExcelModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title text-white" id="importExcelModalLabel"><i class="mdi mdi-file-excel mr-1"></i> Import Data dari Excel</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>Petunjuk:</strong> Unduh format template Excel untuk diisi. Pastikan kolom-kolomnya sesuai dengan template.
+                        <br>
+                        <a href="javascript:void(0);" onclick="downloadTemplateExcel()" class="btn btn-sm btn-outline-primary mt-2"><i class="mdi mdi-download mr-1"></i> Unduh Template Excel</a>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Pilih File Excel (.xlsx, .xls)</label>
+                        <input type="file" id="excelFile" class="form-control-file" accept=".xlsx, .xls">
+                    </div>
+
+                    <div id="excelPreviewContainer" style="display: none;">
+                        <h6 class="my-3"><b>Pratinjau Data (Maks. 50 Baris pertama):</b></h6>
+                        <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                            <table class="table table-bordered table-striped table-sm" id="excelPreviewTable">
+                                <thead class="thead-dark">
+                                    <!-- Headers dynamically generated -->
+                                </thead>
+                                <tbody>
+                                    <!-- Data dynamically generated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="button" id="btnConfirmImport" class="btn btn-success" disabled>Proses Import</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <form action="upload.php" method="POST" enctype="multipart/form-data">
     <div class="card">
              <div class="m-t-20"  style = "margin : 0px 10px 0px 20px;">
@@ -352,6 +413,181 @@ $('#date-format2').bootstrapMaterialDatePicker({
          
         <!-- App js -->
         <script src="assets/js/app.js"></script>
+
+        <!-- SheetJS & Excel Import script -->
+        <script src="assets/js/xlsx.full.min.js"></script>
+        <script>
+        let importedData = [];
+
+        function downloadTemplateExcel() {
+            const headers = [
+                "Kode Gangguan", "Tanggal Gangguan", "Kategori Gangguan", "Unit", "Penyulang", "Keypoint ID", "Kategori", "Tanggal Masuk", "Relay Kerja", "Fasa", "KV 0", "I N", "I R", "I S", "I T", "Cuaca", "Jenis Gangguan", "Latitude", "Longitude", "Hasil Temuan"
+            ];
+            const sampleRow = [
+                "G001", "2026-07-23 09:00", "PMT", "ULP BALONG", "TEGAL OMBO", "", "TEMPORER", "2026-07-23 09:10", "OCR", "RST", 20, 1.5, 12, 11, 13, "CERAH", "HEWAN", "-8.067", "111.231", "Ditemukan tupai"
+            ];
+            const sampleRow2 = [
+                "G002", "2026-07-23 09:30", "REC", "ULP BALONG", "TEGAL OMBO", "PTCT PETUNG SINARANG", "PERMANEN", "2026-07-23 09:45", "EF", "R", 0, 0, 10, 0, 0, "HUJAN", "POHON", "-8.067", "111.231", "Dahan pohon menyentuh kabel"
+            ];
+            
+            const ws_data = [headers, sampleRow, sampleRow2];
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            XLSX.utils.book_append_sheet(wb, ws, "Template Gangguan");
+            XLSX.writeFile(wb, "Template_Import_Gangguan.xlsx");
+        }
+
+        document.getElementById('excelFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Get JSON format
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                    if (jsonData.length === 0) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Peringatan',
+                            text: 'File Excel kosong atau tidak memiliki baris data.',
+                            confirmButtonColor: '#242c6d'
+                        });
+                        return;
+                    }
+                    
+                    importedData = jsonData;
+                    
+                    // Build Preview Table
+                    const tableHead = document.querySelector('#excelPreviewTable thead');
+                    const tableBody = document.querySelector('#excelPreviewTable tbody');
+                    tableHead.innerHTML = '';
+                    tableBody.innerHTML = '';
+                    
+                    // Headers
+                    const headers = Object.keys(jsonData[0]);
+                    let headRow = '<tr>';
+                    headers.forEach(h => {
+                        headRow += `<th>${h}</th>`;
+                    });
+                    headRow += '<th>Foto 1</th><th>Foto 2</th>';
+                    headRow += '</tr>';
+                    tableHead.innerHTML = headRow;
+                    
+                    // Body (show max 50 rows)
+                    jsonData.slice(0, 50).forEach((row, rowIndex) => {
+                        let bodyRow = '<tr>';
+                        headers.forEach(h => {
+                            bodyRow += `<td>${row[h] !== undefined ? row[h] : ''}</td>`;
+                        });
+                        bodyRow += `<td><input type="file" accept="image/*" class="form-control-file" style="font-size: 10px; min-width: 120px;" onchange="handleRowFile(event, ${rowIndex}, 'foto1')"></td>`;
+                        bodyRow += `<td><input type="file" accept="image/*" class="form-control-file" style="font-size: 10px; min-width: 120px;" onchange="handleRowFile(event, ${rowIndex}, 'foto2')"></td>`;
+                        bodyRow += '</tr>';
+                        tableBody.innerHTML += bodyRow;
+                    });
+                    
+                    document.getElementById('excelPreviewContainer').style.display = 'block';
+                    document.getElementById('btnConfirmImport').disabled = false;
+                } catch (error) {
+                    console.error(error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: 'Gagal membaca file Excel. Pastikan format file benar.',
+                        confirmButtonColor: '#242c6d'
+                    });
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function handleRowFile(event, rowIndex, fieldName) {
+            const file = event.target.files[0];
+            if (!file) {
+                if (importedData[rowIndex]) {
+                    delete importedData[rowIndex][fieldName];
+                }
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                if (!importedData[rowIndex]) {
+                    importedData[rowIndex] = {};
+                }
+                importedData[rowIndex][fieldName] = {
+                    name: file.name,
+                    data: evt.target.result
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        document.getElementById('btnConfirmImport').addEventListener('click', function() {
+            if (importedData.length === 0) return;
+            
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Memproses...';
+            
+            fetch('proses_import_excel.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(importedData)
+            })
+            .then(response => response.json())
+            .then(res => {
+                btn.disabled = false;
+                btn.innerHTML = 'Proses Import';
+                
+                if (res.success) {
+                    let msg = `Berhasil mengimpor ${res.inserted} data.`;
+                    if (res.errors && res.errors.length > 0) {
+                        msg += `<br><br><strong>Detail Kesalahan:</strong><br>` + res.errors.join('<br>');
+                    }
+                    Swal.fire({
+                        icon: res.errors && res.errors.length > 0 ? 'warning' : 'success',
+                        title: res.errors && res.errors.length > 0 ? 'Selesai dengan Kesalahan' : 'Sukses',
+                        html: msg,
+                        confirmButtonColor: '#242c6d'
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    let msg = 'Gagal mengimpor data.';
+                    if (res.errors && res.errors.length > 0) {
+                        msg += `<br><br><strong>Detail Kesalahan:</strong><br>` + res.errors.join('<br>');
+                    } else if (res.message) {
+                        msg += `<br><br>` + res.message;
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        html: msg,
+                        confirmButtonColor: '#242c6d'
+                    });
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                btn.disabled = false;
+                btn.innerHTML = 'Proses Import';
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Terjadi kesalahan jaringan atau server.',
+                    confirmButtonColor: '#242c6d'
+                });
+            });
+        });
+        </script>
 
     </body>
 </html>

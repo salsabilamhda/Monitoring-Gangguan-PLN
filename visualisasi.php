@@ -22,20 +22,48 @@ while ($ru = mysql_fetch_assoc($qu)) {
 
 // Setup Filters
 $selected_tahun = isset($_REQUEST['tahun']) ? $_REQUEST['tahun'] : 'ALL';
+$selected_bulan = isset($_REQUEST['bulan']) ? $_REQUEST['bulan'] : 'ALL';
 $selected_unit = isset($_REQUEST['unit']) ? $_REQUEST['unit'] : 'ALL';
+
+$month_names = [
+    1 => 'Januari',
+    2 => 'Februari',
+    3 => 'Maret',
+    4 => 'April',
+    5 => 'Mei',
+    6 => 'Juni',
+    7 => 'Juli',
+    8 => 'Agustus',
+    9 => 'September',
+    10 => 'Oktober',
+    11 => 'November',
+    12 => 'Desember'
+];
 
 // Construct WHERE clauses
 $where_clauses = ["g.tglgangguan > '2000-01-01 00:00:00'"];
+$where_clauses_no_month = ["g.tglgangguan > '2000-01-01 00:00:00'"];
+
 if ($selected_tahun !== 'ALL' && !empty($selected_tahun)) {
     $where_clauses[] = "YEAR(g.tglgangguan) = '" . mysql_real_escape_string($selected_tahun) . "'";
+    $where_clauses_no_month[] = "YEAR(g.tglgangguan) = '" . mysql_real_escape_string($selected_tahun) . "'";
+}
+if ($selected_bulan !== 'ALL' && !empty($selected_bulan)) {
+    $where_clauses[] = "MONTH(g.tglgangguan) = '" . mysql_real_escape_string($selected_bulan) . "'";
 }
 if ($selected_unit !== 'ALL' && !empty($selected_unit)) {
     $where_clauses[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
+    $where_clauses_no_month[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
 }
 
 $where_sql = "";
 if (count($where_clauses) > 0) {
     $where_sql = "WHERE " . implode(" AND ", $where_clauses);
+}
+
+$where_sql_no_month = "";
+if (count($where_clauses_no_month) > 0) {
+    $where_sql_no_month = "WHERE " . implode(" AND ", $where_clauses_no_month);
 }
 
 // 1. Overview Cards Data
@@ -87,100 +115,218 @@ $q_top_weather = mysql_query("
 $r_top_weather = mysql_fetch_assoc($q_top_weather);
 $top_weather = isset($r_top_weather['uraiancuaca']) ? $r_top_weather['uraiancuaca'] : '-';
 
-// 2. Trend Bulanan Data
-$monthly_trend = array_fill(1, 12, 0);
-$q_monthly = mysql_query("
-    SELECT MONTH(g.tglgangguan) as bulan, COUNT(*) as jumlah 
-    FROM datagangguan g 
-    $where_sql 
-    GROUP BY MONTH(g.tglgangguan)
+// 2. Data Top ULP Gangguan Permanen & Temporer
+$ulp_stats = [];
+$q_ulp_stats = mysql_query("
+    SELECT u.uraian, g.unit,
+           SUM(CASE WHEN g.kat_gangguan = 'PMT' THEN 1 ELSE 0 END) as permanen,
+           SUM(CASE WHEN g.kat_gangguan = 'REC' THEN 1 ELSE 0 END) as temporer
+    FROM datagangguan g
+    JOIN kodeunit u ON g.unit = u.kodeunit
+    $where_sql
+    GROUP BY g.unit, u.uraian
+    ORDER BY (permanen + temporer) DESC
 ");
-while ($row = mysql_fetch_assoc($q_monthly)) {
-    $monthly_trend[(int)$row['bulan']] = (int)$row['jumlah'];
-}
-$monthly_trend_values = array_values($monthly_trend);
+while ($row = mysql_fetch_assoc($q_ulp_stats)) {
+    $name = $row['uraian'];
+    if (strpos(strtoupper($name), 'TRENGGALEK') !== false) $short = 'TGK';
+    elseif (strpos(strtoupper($name), 'PONOROGO') !== false && strpos(strtoupper($name), 'ULP') !== false) $short = 'PNG';
+    elseif (strpos(strtoupper($name), 'PACITAN') !== false) $short = 'PCT';
+    elseif (strpos(strtoupper($name), 'BALONG') !== false) $short = 'BLG';
+    else $short = $name;
 
-// 3. Kategori Gangguan Data
-$kat_labels = [];
-$kat_values = [];
-$q_kat = mysql_query("
-    SELECT g.kat_gangguan, COUNT(*) as jumlah 
-    FROM datagangguan g 
-    $where_sql 
-    GROUP BY g.kat_gangguan
-");
-while ($row = mysql_fetch_assoc($q_kat)) {
-    $kat_labels[] = $row['kat_gangguan'] == 'REC' ? 'REC / PMCB' : $row['kat_gangguan'];
-    $kat_values[] = (int)$row['jumlah'];
-}
-
-// 4. Top 10 Penyebab Gangguan Data
-$cause_labels = [];
-$cause_values = [];
-$q_cause = mysql_query("
-    SELECT j.uraianjenisgangguan, COUNT(*) as jumlah 
-    FROM datagangguan g 
-    JOIN kodejenisgangguan j ON g.jeniskode = j.idjenisgangguan 
-    $where_sql 
-    GROUP BY g.jeniskode, j.uraianjenisgangguan 
-    ORDER BY jumlah DESC 
-    LIMIT 10
-");
-while ($row = mysql_fetch_assoc($q_cause)) {
-    $cause_labels[] = $row['uraianjenisgangguan'];
-    $cause_values[] = (int)$row['jumlah'];
+    $ulp_stats[] = [
+        'label' => $short,
+        'permanen' => (int)$row['permanen'],
+        'temporer' => (int)$row['temporer']
+    ];
 }
 
-// 5. Gangguan per Unit / ULP Data
-$unit_labels = [];
-$unit_values = [];
-$q_unit_dist = mysql_query("
-    SELECT u.uraian, COUNT(*) as jumlah 
-    FROM datagangguan g 
-    JOIN kodeunit u ON g.unit = u.kodeunit 
-    $where_sql 
-    GROUP BY g.unit, u.uraian 
-    ORDER BY jumlah DESC
+// 3. Data Gangguan Permanen & Temporer per ULP Bulanan
+$ulp_key_map = [
+    'ULP BALONG' => 'BALONG',
+    'ULP PACITAN' => 'PACITAN',
+    'ULP PONOROGO' => 'PONOROGO',
+    'ULP TRENGGALEK' => 'TRENGGALEK',
+    'UP3 PONOROGO' => 'UP3 PNG'
+];
+
+$monthly_data_pmt = [];
+$monthly_data_rec = [];
+$available_months = [];
+
+$q_monthly_ulp = mysql_query("
+    SELECT u.uraian, MONTH(g.tglgangguan) as bulan,
+           SUM(CASE WHEN g.kat_gangguan = 'PMT' THEN 1 ELSE 0 END) as permanen,
+           SUM(CASE WHEN g.kat_gangguan = 'REC' THEN 1 ELSE 0 END) as temporer
+    FROM datagangguan g
+    JOIN kodeunit u ON g.unit = u.kodeunit
+    $where_sql_no_month
+    GROUP BY g.unit, u.uraian, MONTH(g.tglgangguan)
 ");
-while ($row = mysql_fetch_assoc($q_unit_dist)) {
-    $unit_labels[] = $row['uraian'];
-    $unit_values[] = (int)$row['jumlah'];
+while ($row = mysql_fetch_assoc($q_monthly_ulp)) {
+    $raw_name = $row['uraian'];
+    $mapped_name = 'LAINNYA';
+    foreach ($ulp_key_map as $k => $v) {
+        if (strpos(strtoupper($raw_name), $k) !== false) {
+            $mapped_name = $v;
+            break;
+        }
+    }
+    $bulan = (int)$row['bulan'];
+    $available_months[$bulan] = true;
+    
+    if (!isset($monthly_data_pmt[$mapped_name])) $monthly_data_pmt[$mapped_name] = [];
+    if (!isset($monthly_data_rec[$mapped_name])) $monthly_data_rec[$mapped_name] = [];
+    
+    $monthly_data_pmt[$mapped_name][$bulan] = (int)$row['permanen'];
+    $monthly_data_rec[$mapped_name][$bulan] = (int)$row['temporer'];
+}
+ksort($available_months);
+$available_months_keys = array_keys($available_months);
+if (empty($available_months_keys)) {
+    $available_months_keys = [(int)date('m')];
 }
 
-// 6. Gangguan Berdasarkan Cuaca Data
-$weather_labels = [];
-$weather_values = [];
-$q_weather_dist = mysql_query("
-    SELECT c.uraiancuaca, COUNT(*) as jumlah 
-    FROM datagangguan g 
-    JOIN kodecuaca c ON g.cuacakode = c.idcuaca 
-    $where_sql 
-    GROUP BY g.cuacakode, c.uraiancuaca 
-    ORDER BY jumlah DESC
-");
-while ($row = mysql_fetch_assoc($q_weather_dist)) {
-    $weather_labels[] = $row['uraiancuaca'];
-    $weather_values[] = (int)$row['jumlah'];
+$month_abbrev = [
+    1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun',
+    7 => 'Jul', 8 => 'Agt', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'
+];
+
+$chart_ulps = ['BALONG', 'PACITAN', 'PONOROGO', 'TRENGGALEK', 'UP3 PNG'];
+$datasets_pmt = [];
+$datasets_rec = [];
+
+$colors_monthly = [
+    1 => '#242c6d', // Jan
+    2 => '#fd7e14', // Feb
+    3 => '#6c757d', // Mar
+    4 => '#ffc107', // Apr
+    5 => '#17a2b8', // Mei
+    6 => '#28a745', // Jun
+    7 => '#e83e8c', // Jul
+    8 => '#dc3545', // Agt
+    9 => '#20c997', // Sep
+    10 => '#6610f2', // Okt
+    11 => '#a83e8c', // Nov
+    12 => '#555555'  // Des
+];
+
+foreach ($available_months_keys as $m) {
+    $data_pmt_m = [];
+    $data_rec_m = [];
+    foreach ($chart_ulps as $ulp) {
+        $data_pmt_m[] = isset($monthly_data_pmt[$ulp][$m]) ? $monthly_data_pmt[$ulp][$m] : 0;
+        $data_rec_m[] = isset($monthly_data_rec[$ulp][$m]) ? $monthly_data_rec[$ulp][$m] : 0;
+    }
+    
+    $color = isset($colors_monthly[$m]) ? $colors_monthly[$m] : '#6c757d';
+    
+    $datasets_pmt[] = [
+        'label' => isset($month_abbrev[$m]) ? $month_abbrev[$m] : ('Bulan ' . $m),
+        'data' => $data_pmt_m,
+        'backgroundColor' => $color
+    ];
+    $datasets_rec[] = [
+        'label' => isset($month_abbrev[$m]) ? $month_abbrev[$m] : ('Bulan ' . $m),
+        'data' => $data_rec_m,
+        'backgroundColor' => $color
+    ];
 }
 
-// 7. Top 10 Penyulang Terganggu
-$feeder_clauses = $where_clauses;
-$feeder_clauses[] = "g.penyulang != ''";
-$feeder_where_sql = "WHERE " . implode(" AND ", $feeder_clauses);
-$feeder_labels = [];
-$feeder_values = [];
-$q_feeder = mysql_query("
-    SELECT g.penyulang, COUNT(*) as jumlah 
-    FROM datagangguan g 
-    $feeder_where_sql 
-    GROUP BY g.penyulang 
-    ORDER BY jumlah DESC 
-    LIMIT 10
-");
-while ($row = mysql_fetch_assoc($q_feeder)) {
-    $feeder_labels[] = $row['penyulang'];
-    $feeder_values[] = (int)$row['jumlah'];
+// 4. Data Trend Gangguan 3 Top Skor Temporer & Permanen Keypoint
+$ulp_keypoint_data = [];
+$target_ulps = [
+    51541 => 'BALONG',
+    51542 => 'PACITAN',
+    51540 => 'PONOROGO',
+    51543 => 'TRENGGALEK'
+];
+
+foreach ($target_ulps as $ulp_id => $ulp_name) {
+    $q_kp = mysql_query("
+        SELECT k.keterangan as nama_keypoint, k.kodepenyul,
+               (
+                   SELECT COUNT(*) 
+                   FROM datagangguan g 
+                   $where_sql AND g.keypointid = k.idkeypoint AND g.kat_gangguan = 'REC'
+               ) as temporer,
+               (
+                   SELECT COUNT(*) 
+                   FROM datagangguan g 
+                   $where_sql AND g.penyulang = k.kodepenyul AND g.kat_gangguan = 'PMT'
+               ) as permanen
+        FROM kodekeypoint k
+        WHERE k.unit = '$ulp_id' 
+          AND k.idkeypoint IN (
+              SELECT DISTINCT keypointid 
+              FROM datagangguan g
+              $where_sql AND g.keypointid != '' AND g.keypointid != '0'
+          )
+        ORDER BY (temporer + permanen) DESC
+        LIMIT 7
+    ");
+    
+    $kp_list = [];
+    if ($q_kp) {
+        while ($r_kp = mysql_fetch_assoc($q_kp)) {
+            $clean_name = preg_replace('/^(REC\b\.?|CO\b\.?|PMCB\b\.?|LBS\b\.?)\s*/i', '', $r_kp['nama_keypoint']);
+            $kp_list[] = [
+                'name' => $clean_name,
+                'permanen' => (int)$r_kp['permanen'],
+                'temporer' => (int)$r_kp['temporer']
+            ];
+        }
+    }
+    $ulp_keypoint_data[$ulp_name] = $kp_list;
 }
+
+$keypoint_labels = [];
+$keypoint_pmt = [];
+$keypoint_rec = [];
+
+foreach ($ulp_keypoint_data as $ulp_name => $kp_list) {
+    foreach ($kp_list as $kp) {
+        $keypoint_labels[] = [$kp['name'], $ulp_name];
+        $keypoint_pmt[] = $kp['permanen'];
+        $keypoint_rec[] = $kp['temporer'];
+    }
+}
+
+// 5. Data Hari Tanpa Padam (Calendar Grid)
+$days_in_month = 31;
+if ($selected_bulan !== 'ALL' && is_numeric($selected_bulan)) {
+    $year = ($selected_tahun !== 'ALL' && is_numeric($selected_tahun)) ? (int)$selected_tahun : (int)date('Y');
+    $days_in_month = cal_days_in_month(CAL_GREGORIAN, (int)$selected_bulan, $year);
+} else {
+    $days_in_month = cal_days_in_month(CAL_GREGORIAN, (int)date('m'), ($selected_tahun !== 'ALL' && is_numeric($selected_tahun)) ? (int)$selected_tahun : (int)date('Y'));
+}
+
+$outage_days = [];
+$q_outages = mysql_query("
+    SELECT g.unit, DAY(g.tglgangguan) as hari
+    FROM datagangguan g
+    $where_sql AND g.kat_gangguan = 'PMT'
+");
+if ($q_outages) {
+    while ($row = mysql_fetch_assoc($q_outages)) {
+        $raw_unit = $row['unit'];
+        $day = (int)$row['hari'];
+        
+        $ulp_name = '';
+        if ($raw_unit == 51540) $ulp_name = 'PONOROGO';
+        elseif ($raw_unit == 51541) $ulp_name = 'BALONG';
+        elseif ($raw_unit == 51542) $ulp_name = 'PACITAN';
+        elseif ($raw_unit == 51543) $ulp_name = 'TRENGGALEK';
+        
+        if ($ulp_name !== '') {
+            $outage_days[$ulp_name][$day] = true;
+        }
+    }
+}
+
+$selected_month_name = ($selected_bulan !== 'ALL' && isset($month_names[$selected_bulan])) ? $month_names[$selected_bulan] : 'Bulan Ini';
+$selected_year_name = ($selected_tahun !== 'ALL') ? $selected_tahun : date('Y');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -198,7 +344,7 @@ while ($row = mysql_fetch_assoc($q_feeder)) {
       font-family: "Segoe UI", Arial, sans-serif;
       background-color: #f4f6f9;
       color: #333;
-      padding: 20px !important;
+      padding: 20px 20px 80px 20px !important;
       margin: 0 !important;
     }
     .page-title {
@@ -294,7 +440,7 @@ while ($row = mysql_fetch_assoc($q_feeder)) {
   <!-- Filter Bar -->
   <div class="card filter-card">
     <form method="GET" action="" class="row g-3 align-items-end">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label for="tahun" class="form-label fw-semibold text-secondary small">Filter Tahun</label>
         <select class="form-select form-select-sm" id="tahun" name="tahun">
           <option value="ALL" <?php echo $selected_tahun == 'ALL' ? 'selected' : ''; ?>>Semua Tahun</option>
@@ -303,7 +449,16 @@ while ($row = mysql_fetch_assoc($q_feeder)) {
           <?php endforeach; ?>
         </select>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
+        <label for="bulan" class="form-label fw-semibold text-secondary small">Filter Bulan</label>
+        <select class="form-select form-select-sm" id="bulan" name="bulan">
+          <option value="ALL" <?php echo $selected_bulan == 'ALL' ? 'selected' : ''; ?>>Semua Bulan</option>
+          <?php foreach ($month_names as $m_num => $m_name): ?>
+            <option value="<?php echo $m_num; ?>" <?php echo $selected_bulan == $m_num ? 'selected' : ''; ?>><?php echo $m_name; ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="col-md-3">
         <label for="unit" class="form-label fw-semibold text-secondary small">Filter Unit / ULP</label>
         <select class="form-select form-select-sm" id="unit" name="unit">
           <option value="ALL" <?php echo $selected_unit == 'ALL' ? 'selected' : ''; ?>>Semua ULP / Unit</option>
@@ -312,7 +467,7 @@ while ($row = mysql_fetch_assoc($q_feeder)) {
           <?php endforeach; ?>
         </select>
       </div>
-      <div class="col-md-4 d-grid">
+      <div class="col-md-3 d-grid">
         <button type="submit" class="btn btn-primary btn-sm" style="background-color: #242c6d; border-color: #242c6d;">
           <i class="fa fa-filter me-1"></i> Terapkan Filter
         </button>
@@ -370,78 +525,112 @@ while ($row = mysql_fetch_assoc($q_feeder)) {
     </div>
   </div>
 
-  <!-- Row 1: Line Chart & Pie Chart -->
-  <div class="row">
-    <!-- Tren Bulanan -->
-    <div class="col-lg-8 col-md-12">
-      <div class="card">
-        <div class="card-body">
-          <div class="chart-title"><i class="fa fa-chart-area me-2"></i>Tren Gangguan Bulanan</div>
-          <div class="chart-container">
-            <canvas id="monthlyTrendChart"></canvas>
+  <!-- Row 1: Stacked Horizontal Bar Chart & Calendar Grid -->
+  <div class="row g-4 mb-4">
+    <!-- Top ULP Gangguan Permanen & Temporer -->
+    <div class="col-lg-6 col-md-12 d-flex">
+      <div class="card h-100 w-100">
+        <div class="card-body d-flex flex-column justify-content-between">
+          <div>
+            <div class="chart-title">
+              <i class="fa fa-align-left me-2"></i>Top ULP Gangguan Permanen & Temporer
+            </div>
+            <div class="chart-container" style="height: 320px; margin-top: 15px;">
+              <canvas id="ulpStackedChart"></canvas>
+            </div>
           </div>
         </div>
       </div>
     </div>
-    <!-- Kategori Gangguan -->
-    <div class="col-lg-4 col-md-12">
-      <div class="card">
-        <div class="card-body">
-          <div class="chart-title"><i class="fa fa-chart-pie me-2"></i>Kategori Gangguan</div>
-          <div class="chart-container">
-            <canvas id="katChart"></canvas>
+    
+    <!-- Hari Tanpa Padam Grid -->
+    <div class="col-lg-6 col-md-12 d-flex">
+      <div class="card h-100 w-100">
+        <div class="card-body d-flex flex-column justify-content-between">
+          <div>
+            <div class="chart-title">
+              <i class="fa fa-calendar-alt me-2"></i>Hari Tanpa Padam - <?php echo $selected_month_name . ' ' . $selected_year_name; ?>
+            </div>
+            <div class="table-responsive" style="margin-top: 25px;">
+              <table class="table table-bordered text-center align-middle hari-tanpa-padam-table" style="font-size: 11px; margin-bottom: 0;">
+                <thead>
+                  <tr class="table-dark">
+                    <th style="min-width: 90px; text-align: left; font-size: 10px;">ULP</th>
+                    <?php for ($d = 1; $d <= $days_in_month; $d++): ?>
+                      <th style="padding: 3px !important; font-size: 9px;"><?php echo $d; ?></th>
+                    <?php endfor; ?>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach (['PONOROGO', 'BALONG', 'PACITAN', 'TRENGGALEK'] as $ulp): ?>
+                    <tr>
+                      <td class="fw-bold text-start" style="padding: 5px !important; font-size: 10px; height: 42px;"><?php echo $ulp; ?></td>
+                      <?php for ($d = 1; $d <= $days_in_month; $d++): ?>
+                        <?php 
+                          $has_outage = isset($outage_days[$ulp][$d]);
+                          $bg_color = $has_outage ? '#dc3545' : '#ffc107'; // Red vs Yellow
+                        ?>
+                        <td style="background-color: <?php echo $bg_color; ?>; padding: 0 !important; height: 42px;" 
+                            title="<?php echo $ulp . ' - Tanggal ' . $d . ': ' . ($has_outage ? 'Ada Padam (PMT)' : 'Tanpa Padam'); ?>">
+                          <!-- Empty space to show color -->
+                        </td>
+                      <?php endfor; ?>
+                    </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="d-flex align-items-center justify-content-center gap-3 mt-3" style="font-size: 11px;">
+            <div class="d-flex align-items-center"><span class="d-inline-block rounded-1 me-1" style="width:12px; height:12px; background-color:#ffc107;"></span> Tanpa Padam</div>
+            <div class="d-flex align-items-center"><span class="d-inline-block rounded-1 me-1" style="width:12px; height:12px; background-color:#dc3545;"></span> Ada Padam (PMT)</div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Row 2: ULP Distribution & Top Causes -->
+  <!-- Row 2: Monthly Permanen & Temporer per ULP -->
   <div class="row">
-    <!-- Gangguan per ULP -->
+    <!-- Gangguan Permanen per ULP -->
     <div class="col-lg-6 col-md-12">
       <div class="card">
         <div class="card-body">
-          <div class="chart-title"><i class="fa fa-map-marker-alt me-2"></i>Distribusi Gangguan per ULP</div>
-          <div class="chart-container">
-            <canvas id="ulpChart"></canvas>
+          <div class="chart-title">
+            <i class="fa fa-ban me-2"></i>Gangguan Permanen Per ULP
+          </div>
+          <div class="chart-container" style="height: 300px;">
+            <canvas id="monthlyPmtChart"></canvas>
           </div>
         </div>
       </div>
     </div>
-    <!-- Top 10 Penyebab -->
+    
+    <!-- Gangguan Temporer per ULP -->
     <div class="col-lg-6 col-md-12">
       <div class="card">
         <div class="card-body">
-          <div class="chart-title"><i class="fa fa-list-ol me-2"></i>Top 10 Penyebab Gangguan</div>
-          <div class="chart-container">
-            <canvas id="causeChart"></canvas>
+          <div class="chart-title">
+            <i class="fa fa-clock me-2"></i>Gangguan Temporer Per ULP
+          </div>
+          <div class="chart-container" style="height: 300px;">
+            <canvas id="monthlyRecChart"></canvas>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Row 3: Cuaca & Top 10 Penyulang -->
+  <!-- Row 3: Trend Gangguan 3 Top Skor Temporer & Permanen -->
   <div class="row">
-    <!-- Gangguan per Cuaca -->
-    <div class="col-lg-6 col-md-12">
+    <div class="col-lg-12 col-md-12">
       <div class="card">
         <div class="card-body">
-          <div class="chart-title"><i class="fa fa-sun me-2"></i>Faktor Kondisi Cuaca</div>
-          <div class="chart-container">
-            <canvas id="weatherChart"></canvas>
+          <div class="chart-title">
+            <i class="fa fa-chart-bar me-2"></i>Trend Gangguan 3 Top Skor Temporer & Permanen - <?php echo $selected_month_name . ' ' . $selected_year_name; ?>
           </div>
-        </div>
-      </div>
-    </div>
-    <!-- Top 10 Penyulang -->
-    <div class="col-lg-6 col-md-12">
-      <div class="card">
-        <div class="card-body">
-          <div class="chart-title"><i class="fa fa-bolt me-2"></i>Top 10 Penyulang Sering Terganggu</div>
-          <div class="chart-container">
-            <canvas id="feederChart"></canvas>
+          <div class="chart-container" style="height: 350px;">
+            <canvas id="keypointChart"></canvas>
           </div>
         </div>
       </div>
@@ -450,49 +639,72 @@ while ($row = mysql_fetch_assoc($q_feeder)) {
 
 </div>
 
-<!-- Render Charts Scripts -->
 <script>
   // Colors setup
   const primaryColor = '#242c6d';
-  const primaryLight = 'rgba(36, 44, 109, 0.2)';
-  const hoverColor = '#1d2358';
+  const orangeColor = '#fd7e14';
+  const greenColor = '#28a745';
   
-  const colorsPalette = [
-    '#242c6d', // Dark Navy
-    '#28a745', // Green
-    '#dc3545', // Red
-    '#ffc107', // Orange/Yellow
-    '#17a2b8', // Teal
-    '#6610f2', // Purple
-    '#e83e8c', // Pink
-    '#fd7e14', // Orange
-    '#20c997', // Mint
-    '#6c757d'  // Gray
-  ];
-
-  // 1. Monthly Trend Chart
-  const ctxMonthly = document.getElementById('monthlyTrendChart').getContext('2d');
-  new Chart(ctxMonthly, {
-    type: 'line',
+  // 1. Top ULP Gangguan Permanen & Temporer Stacked Horizontal Chart
+  const ctxUlpStacked = document.getElementById('ulpStackedChart').getContext('2d');
+  new Chart(ctxUlpStacked, {
+    type: 'bar',
     data: {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'],
-      datasets: [{
-        label: 'Jumlah Gangguan',
-        data: <?php echo json_encode($monthly_trend_values); ?>,
-        borderColor: primaryColor,
-        backgroundColor: primaryLight,
-        borderWidth: 3,
-        tension: 0.3,
-        fill: true,
-        pointBackgroundColor: primaryColor,
-        pointRadius: 4
-      }]
+      labels: <?php echo json_encode(array_column($ulp_stats, 'label')); ?>,
+      datasets: [
+        {
+          label: 'Temporer',
+          data: <?php echo json_encode(array_column($ulp_stats, 'temporer')); ?>,
+          backgroundColor: primaryColor,
+          borderRadius: 4
+        },
+        {
+          label: 'Permanen',
+          data: <?php echo json_encode(array_column($ulp_stats, 'permanen')); ?>,
+          backgroundColor: orangeColor,
+          borderRadius: 4
+        }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 12, font: { size: 11 } }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          beginAtZero: true,
+          ticks: { stepSize: 1 }
+        },
+        y: {
+          stacked: true
+        }
+      }
+    }
+  });
+
+  // 2. Gangguan Permanen Per ULP Chart
+  const ctxMonthlyPmt = document.getElementById('monthlyPmtChart').getContext('2d');
+  new Chart(ctxMonthlyPmt, {
+    type: 'bar',
+    data: {
+      labels: <?php echo json_encode($chart_ulps); ?>,
+      datasets: <?php echo json_encode($datasets_pmt); ?>
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false }
+        legend: {
+          position: 'right',
+          labels: { boxWidth: 12, font: { size: 10 } }
+        }
       },
       scales: {
         y: {
@@ -503,92 +715,13 @@ while ($row = mysql_fetch_assoc($q_feeder)) {
     }
   });
 
-  // 2. Kategori Gangguan Chart
-  const ctxKat = document.getElementById('katChart').getContext('2d');
-  new Chart(ctxKat, {
-    type: 'doughnut',
-    data: {
-      labels: <?php echo json_encode($kat_labels); ?>,
-      datasets: [{
-        data: <?php echo json_encode($kat_values); ?>,
-        backgroundColor: ['#28a745', '#dc3545', '#ffc107'],
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { boxWidth: 12, font: { size: 11 } }
-        }
-      }
-    }
-  });
-
-  // 3. ULP Distribution Chart
-  const ctxUlp = document.getElementById('ulpChart').getContext('2d');
-  new Chart(ctxUlp, {
+  // 3. Gangguan Temporer Per ULP Chart
+  const ctxMonthlyRec = document.getElementById('monthlyRecChart').getContext('2d');
+  new Chart(ctxMonthlyRec, {
     type: 'bar',
     data: {
-      labels: <?php echo json_encode($unit_labels); ?>,
-      datasets: [{
-        data: <?php echo json_encode($unit_values); ?>,
-        backgroundColor: primaryColor,
-        borderRadius: 5,
-        barPercentage: 0.6
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        y: { beginAtZero: true, ticks: { stepSize: 1 } }
-      }
-    }
-  });
-
-  // 4. Top 10 Cause Chart
-  const ctxCause = document.getElementById('causeChart').getContext('2d');
-  new Chart(ctxCause, {
-    type: 'bar',
-    data: {
-      labels: <?php echo json_encode($cause_labels); ?>,
-      datasets: [{
-        data: <?php echo json_encode($cause_values); ?>,
-        backgroundColor: '#dc3545',
-        borderRadius: 5,
-        barPercentage: 0.6
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        x: { beginAtZero: true, ticks: { stepSize: 1 } }
-      }
-    }
-  });
-
-  // 5. Weather Distribution Chart
-  const ctxWeather = document.getElementById('weatherChart').getContext('2d');
-  new Chart(ctxWeather, {
-    type: 'polarArea',
-    data: {
-      labels: <?php echo json_encode($weather_labels); ?>,
-      datasets: [{
-        data: <?php echo json_encode($weather_values); ?>,
-        backgroundColor: colorsPalette.slice(0, <?php echo count($weather_labels); ?>),
-        borderWidth: 1
-      }]
+      labels: <?php echo json_encode($chart_ulps); ?>,
+      datasets: <?php echo json_encode($datasets_rec); ?>
     },
     options: {
       responsive: true,
@@ -598,31 +731,88 @@ while ($row = mysql_fetch_assoc($q_feeder)) {
           position: 'right',
           labels: { boxWidth: 12, font: { size: 10 } }
         }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1 }
+        }
       }
     }
   });
 
-  // 6. Top 10 Feeder Chart
-  const ctxFeeder = document.getElementById('feederChart').getContext('2d');
-  new Chart(ctxFeeder, {
+  // 4. Trend Gangguan 3 Top Skor Keypoint Chart (Grouped by ULP)
+  // Custom plugin to show values on top of the bars
+  const topValuesPlugin = {
+    id: 'topValues',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      ctx.save();
+      ctx.font = 'bold 9px sans-serif';
+      ctx.fillStyle = '#444';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        const meta = chart.getDatasetMeta(datasetIndex);
+        meta.data.forEach((bar, index) => {
+          const val = dataset.data[index];
+          if (val > 0) {
+            ctx.fillText(val, bar.x, bar.y - 2);
+          }
+        });
+      });
+      ctx.restore();
+    }
+  };
+
+  const ctxKeypoint = document.getElementById('keypointChart').getContext('2d');
+  new Chart(ctxKeypoint, {
     type: 'bar',
     data: {
-      labels: <?php echo json_encode($feeder_labels); ?>,
-      datasets: [{
-        data: <?php echo json_encode($feeder_values); ?>,
-        backgroundColor: '#ffc107',
-        borderRadius: 5,
-        barPercentage: 0.6
-      }]
+      labels: <?php echo json_encode($keypoint_labels); ?>,
+      datasets: [
+        {
+          label: 'Temporer',
+          data: <?php echo json_encode($keypoint_rec); ?>,
+          backgroundColor: '#3a75c4', // Slate Blue
+          borderRadius: 2,
+          barPercentage: 0.8,
+          categoryPercentage: 0.7
+        },
+        {
+          label: 'Permanen',
+          data: <?php echo json_encode($keypoint_pmt); ?>,
+          backgroundColor: '#f28e2b', // Orange
+          borderRadius: 2,
+          barPercentage: 0.8,
+          categoryPercentage: 0.7
+        }
+      ]
     },
+    plugins: [topValuesPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false }
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 12, font: { size: 11 } }
+        }
       },
       scales: {
-        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1 }
+        },
+        x: {
+          ticks: {
+            font: { size: 10 },
+            maxRotation: 90,
+            minRotation: 90,
+            autoSkip: false
+          }
+        }
       }
     }
   });

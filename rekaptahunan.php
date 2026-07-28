@@ -50,6 +50,10 @@
         }
       }
     }
+    window.addEventListener('resize', function() {
+      var iframe = document.getElementsByName('frame23')[0];
+      if (iframe) resizeIframe(iframe);
+    });
   </script>
     </head>
 
@@ -59,79 +63,75 @@
     <h4 class="page-title">Rekap Tahunan</h4>
     <form action="monittahunan.php" target="frame23" method="POST" enctype="multipart/form-data">
     <div class="card">
-                                       
-                                            <div class="row" style = "margin : 0px 0px 0px 10px; padding-top: 15px;">
-                                                <div class="col-md-3">
-                                                    <h6 class="sub-title mb-3">Tahun Awal</h6>
-                                                    <select class="form-control select2" name="tahun_awal" required>
-                                                        <?php
-                                                        $current_year = (int)date('Y');
-                                                        for ($i = 2018; $i <= $current_year + 5; $i++) {
-                                                            $selected = ($i == $current_year - 4) ? 'selected' : '';
-                                                            echo "<option value='$i' $selected>$i</option>";
-                                                        }
-                                                        ?>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <h6 class="sub-title mb-3">Tahun Akhir</h6>
-                                                    <select class="form-control select2" name="tahun_akhir" required>
-                                                        <?php
-                                                        for ($i = 2018; $i <= $current_year + 5; $i++) {
-                                                            $selected = ($i == $current_year) ? 'selected' : '';
-                                                            echo "<option value='$i' $selected>$i</option>";
-                                                        }
-                                                        ?>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-3">
-                                                   <h6 class="sub-title mb-3">Kategori Gangguan</h6>
-                                                 <div class="form-check-inline my-1">
-                                                                 <div class="custom-control custom-radio">
-                                                                    <input type="radio" id="customRadio4" required = "" name="option" class="custom-control-input"
-                                                                    value = "PMT">
-                                                                    <label class="custom-control-label" for="customRadio4">PMT</label>
-                                                                 </div>
-                                                            </div>
-                                                            <div class="form-check-inline my-1">
-                                                                <div class="custom-control custom-radio">
-                                                                    <input type="radio" id="customRadio5" required = "" name="option" class="custom-control-input" 
-                                                                    value = "REC">
-                                                                    <label class="custom-control-label" for="customRadio5">REC / PMCB</label>
-                                                                </div>
-                                                            </div>
-                                                             <div class="form-check-inline my-1">
-                                                                <div class="custom-control custom-radio">
-                                                                    <input type="radio" id="customRadio6" required = "" name="option" class="custom-control-input"
-                                                                    value = "ALL" checked>
-                                                                    <label class="custom-control-label" for="customRadio6">ALL</label>
-                                                                </div>
-                                                            </div>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <h6 class="sub-title mb-3">Unit</h6>
-                                                    <select class="form-control select2" name="unit" required>
-                                                        <option value="">Pilih Unit</option>
-                                                        <?php
-                                                        include "connect.php";
-                                                        $v = mysql_query("SELECT * FROM kodeunit ORDER BY uraian");
-                                                        while($r = mysql_fetch_assoc($v))
-                                                        {
-                                                            ?>
-                                                            <option value="<?php echo $r['kodeunit']; ?>" <?php echo ($r['kodeunit'] == '5125') ? 'selected' : ''; ?>>
-                                                                <?php echo $r['uraian']; ?>
-                                                            </option>
-                                                            <?php
-                                                        }
-                                                        ?>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="card-body">
-                                                <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
-                                            </div>
-                                     </div>  
-                                     </form>  
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-3 col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Tahun Awal</h6>
+                    <select class="form-control select2" name="tahun_awal" required style="width: 100%;">
+                        <?php
+                        $current_year = (int)date('Y');
+                        for ($i = 2018; $i <= $current_year + 5; $i++) {
+                            $selected = ($i == $current_year - 4) ? 'selected' : '';
+                            echo "<option value='$i' $selected>$i</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="col-lg-3 col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Tahun Akhir</h6>
+                    <select class="form-control select2" name="tahun_akhir" required style="width: 100%;">
+                        <?php
+                        for ($i = 2018; $i <= $current_year + 5; $i++) {
+                            $selected = ($i == $current_year) ? 'selected' : '';
+                            echo "<option value='$i' $selected>$i</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="col-lg-3 col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Kategori Gangguan</h6>
+                    <div class="form-check-inline my-1">
+                        <div class="custom-control custom-radio">
+                            <input type="radio" id="customRadio4" required name="option" class="custom-control-input" value="PMT">
+                            <label class="custom-control-label" for="customRadio4">PMT</label>
+                        </div>
+                    </div>
+                    <div class="form-check-inline my-1">
+                        <div class="custom-control custom-radio">
+                            <input type="radio" id="customRadio5" required name="option" class="custom-control-input" value="REC">
+                            <label class="custom-control-label" for="customRadio5">REC / PMCB</label>
+                        </div>
+                    </div>
+                    <div class="form-check-inline my-1">
+                        <div class="custom-control custom-radio">
+                            <input type="radio" id="customRadio6" required name="option" class="custom-control-input" value="ALL" checked>
+                            <label class="custom-control-label" for="customRadio6">ALL</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Unit</h6>
+                    <select class="form-control select2" name="unit" required style="width: 100%;">
+                        <option value="">Pilih Unit</option>
+                        <?php
+                        include "connect.php";
+                        $v = mysql_query("SELECT * FROM kodeunit ORDER BY uraian");
+                        while($r = mysql_fetch_assoc($v))
+                        {
+                            ?>
+                            <option value="<?php echo $r['kodeunit']; ?>" <?php echo ($r['kodeunit'] == '5125') ? 'selected' : ''; ?>>
+                                <?php echo $r['uraian']; ?>
+                            </option>
+                            <?php
+                        }
+                        ?>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
+        </div>
+    </div>
+    </form>  
                                       <div style="width: 100%; margin: 10px 0 0 0; overflow: hidden;">
                                           <iframe onload="resizeIframe(this)" allowTransparency="true" frameborder="0" scrolling="no" style="width:100%; border:none;" name="frame23" src="monittahunan.php" ></iframe>
                                       </div>

@@ -50,6 +50,10 @@
         }
       }
     }
+    window.addEventListener('resize', function() {
+      var iframe = document.getElementsByName('frame23')[0];
+      if (iframe) resizeIframe(iframe);
+    });
   </script>
     </head>
 
@@ -59,37 +63,34 @@
     <h4 class="page-title">Rekap Harian</h4>
     <form action="monitharian.php" target="frame23" method="POST" enctype="multipart/form-data">
     <div class="card">
-                                       
-                                            <div class="row" style = "margin : 0px 0px 0px 10px;">
-                                                <div class="col-md-6">
-                                                    <h6 class="sub-title mb-3">Range Tanggal</h6>
-                                               <div class="input-daterange input-group" id="date-range">
-                                                            <input type="text" class="form-control" required="" name="tglawal" placeholder="Start Date" value="<?php echo date('m/d/Y'); ?>" />
-                                                            <input type="text" class="form-control" required="" name="tglakhir" placeholder="End Date" value="<?php echo date('m/d/Y'); ?>" />
-                                                        </div>
-                                                </div>
-                                                <div class="col-md-6" style = "margin:0px 0px 10px 0px;">
-                                                   <h6 class="sub-title mb-3">Pilih Unit</h6>
-                                                     <select class="select2 form-control mb-3 custom-select" name = "unit" required = "" >
-                                                <option value = ""></option>
-                                                <?php
-include "connect.php";
-		$v = mysql_query("select * from kodeunit");
-		while($vata = mysql_fetch_object($v))
-		{
-			echo "<option value= $vata->kodeunit >$vata->uraian</option>";
-		}
-		
-	
-
-?>
-                                                       </select>
-                                                  </div>
-                                             
-                                               <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
-                                     </div>  
-                                     </div>
-                                     </form>  
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Range Tanggal</h6>
+                    <div class="input-daterange input-group" id="date-range">
+                        <input type="text" class="form-control" required="" name="tglawal" placeholder="Start Date" value="<?php echo date('m/d/Y'); ?>" />
+                        <input type="text" class="form-control" required="" name="tglakhir" placeholder="End Date" value="<?php echo date('m/d/Y'); ?>" />
+                    </div>
+                </div>
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Pilih Unit</h6>
+                    <select class="select2 form-control custom-select" name="unit" required style="width: 100%;">
+                        <option value=""></option>
+                        <?php
+                        include "connect.php";
+                        $v = mysql_query("select * from kodeunit");
+                        while($vata = mysql_fetch_object($v))
+                        {
+                            echo "<option value= $vata->kodeunit >$vata->uraian</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
+        </div>
+    </div>
+    </form>  
                                       <div style="width: 100%; margin: 10px 0 0 0; overflow: hidden;">
                                           <iframe onload="resizeIframe(this)" allowTransparency="true" frameborder="0" scrolling="no" style="width:100%; border:none;" name="frame23" src="monitharian.php" ></iframe>
                                       </div>

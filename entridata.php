@@ -114,246 +114,227 @@
 
     <form action="upload.php" method="POST" enctype="multipart/form-data">
     <div class="card">
-             <div class="m-t-20"  style = "margin : 0px 10px 0px 20px;">
-                                                <h6 class="sub-title"><b>Kode Gangguan</b></h6>
-                                           <input type="text"  class="form-control" style = "text-transform:uppercase";  name="kodegangguan"  />     
-                                               
-                                            </div> 
-                                        <div class="card-body bootstrap-select-1">
-                                        
-                                                    <h6 class="sub-title my-3">Tanggal Gangguan</h6>
-                                                    <input type="text" id="date-format" class="form-control" name = "tglgangguan" 
-                                                    required = "" >
-                                                    
-                                                </div>
-                                                <div class="row" style = "margin : 0px 10px 0px 10px;">
-                                                <div class="col-md-6">
-                                                    <h6 class="sub-title mb-3">Pilih Kategori Gangguan</h6>
-                                                    <div class="form-check-inline my-1">
-                                                                <div class="custom-control custom-radio">
-                                                                    <input type="radio" id="customRadio4" required = "" name="option" class="custom-control-input"
-                                                                    value = "PMT">
-                                                                    <label class="custom-control-label" for="customRadio4">PMT</label>
-                                                                </div>
-                                                            </div>
-                                                            <div class="form-check-inline my-1">
-                                                                <div class="custom-control custom-radio">
-                                                                    <input type="radio" id="customRadio5" required = "" name="option" class="custom-control-input" 
-                                                                    value = "REC">
-                                                                    <label class="custom-control-label" for="customRadio5">REC / PMCB</label>
-                                                                </div>
-                                                            </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <h6 class="sub-title mb-3">Pilih Dulu Kategori Gangguan</h6>
-                                                    <div id="content1" class="content active">
-                                                    <select class="select2 form-control mb-3 custom-select" disabled>
-                                                <option></option>
-                                                       </select>
-  </div>
-  <div id="content2" class="content">
-  <select class="select2 form-control mb-3 custom-select" name = "pmt" >
-                                                <option value = ""></option>
-                                                <?php
-include "connect.php";
-		$v = mysql_query("select * from v_penyulang");
-		while($vata = mysql_fetch_object($v))
-		{
-			echo "<option value= $vata->unit|$vata->kodepenyul >$vata->uraian|$vata->uraianpenyul</option>";
-		}
-		
-	
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title"><b>Kode Gangguan</b></h6>
+                    <input type="text" class="form-control" style="text-transform:uppercase;" name="kodegangguan" />
+                </div>
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title">Tanggal Gangguan</h6>
+                    <input type="text" id="date-format" class="form-control" name="tglgangguan" required>
+                </div>
+            </div>
 
-?>
-                                                       </select>
-  </div>
-  <div id="content3" class="content">
-  <select class="select2 form-control mb-3 custom-select" name = "rec" >
-                                                <option value = ""></option>
-                                                <?php
-include "connect.php";
-		$v = mysql_query("select * from v_keypoint");
-		while($vata = mysql_fetch_object($v))
-		{
-			echo "<option value= $vata->unit|$vata->kodepenyul|$vata->idkeypoint >$vata->uraian|$vata->uraianpenyul|$vata->keterangan</option>";
-		}
-		
-	
+            <div class="row">
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Pilih Kategori Gangguan</h6>
+                    <div class="form-check-inline my-1">
+                        <div class="custom-control custom-radio">
+                            <input type="radio" id="customRadio4" required name="option" class="custom-control-input" value="PMT">
+                            <label class="custom-control-label" for="customRadio4">PMT</label>
+                        </div>
+                    </div>
+                    <div class="form-check-inline my-1">
+                        <div class="custom-control custom-radio">
+                            <input type="radio" id="customRadio5" required name="option" class="custom-control-input" value="REC">
+                            <label class="custom-control-label" for="customRadio5">REC / PMCB</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Pilih Dulu Kategori Gangguan</h6>
+                    <div id="content1" class="content active">
+                        <select class="select2 form-control mb-3 custom-select" style="width: 100%;" disabled>
+                            <option></option>
+                        </select>
+                    </div>
+                    <div id="content2" class="content">
+                        <select class="select2 form-control mb-3 custom-select" name="pmt" style="width: 100%;">
+                            <option value=""></option>
+                            <?php
+                            include "connect.php";
+                            $v = mysql_query("select * from v_penyulang");
+                            while($vata = mysql_fetch_object($v))
+                            {
+                                echo "<option value= '$vata->unit|$vata->kodepenyul' >$vata->uraian|$vata->uraianpenyul</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div id="content3" class="content">
+                        <select class="select2 form-control mb-3 custom-select" name="rec" style="width: 100%;">
+                            <option value=""></option>
+                            <?php
+                            include "connect.php";
+                            $v = mysql_query("select * from v_keypoint");
+                            while($vata = mysql_fetch_object($v))
+                            {
+                                echo "<option value= '$vata->unit|$vata->kodepenyul|$vata->idkeypoint' >$vata->uraian|$vata->uraianpenyul|$vata->keterangan</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
 
-?>
-                                                       </select>
-  </div>
+            <script>
+                const radios = document.querySelectorAll('input[name="option"]');
+                const content1 = document.getElementById('content1');
+                const content2 = document.getElementById('content2');
+                const content3 = document.getElementById('content3');
 
-  <script>
-    const radios = document.querySelectorAll('input[name="option"]');
-    const content1 = document.getElementById('content1');
-    const content2 = document.getElementById('content2');
-    const content3 = document.getElementById('content3');
+                radios.forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        if (radio.value === 'PMT' && radio.checked) {
+                            content1.classList.remove('active');
+                            content2.classList.add('active');
+                            content3.classList.remove('active');
+                        } else if (radio.value === 'REC' && radio.checked) {
+                            content1.classList.remove('active');
+                            content2.classList.remove('active');
+                            content3.classList.add('active');
+                        }
+                    });
+                });
+            </script>
 
-    radios.forEach(radio => {
-      radio.addEventListener('change', () => {
-        if (radio.value === 'PMT' && radio.checked) {
-          content1.classList.remove('active');
-          content2.classList.add('active');
-          content3.classList.remove('active');
-        } else if (radio.value === 'REC' && radio.checked) {
-          content1.classList.remove('active');
-          content2.classList.remove('active');
-          content3.classList.add('active');
-        }
-      });
-    });
-  </script>
-                                                </div>
-                                            </div> 
-                                            <div class="row" style = "margin : 0px 10px 0px 10px;">
-                                                <div class="col-md-6">
-                                                    <h6 class="sub-title mb-3">Pilih Kategori</h6>
-                                               
-                                                </div>
-                                                <div class="col-md-6">
-                                                   <div class="form-check-inline my-1">
-                                                                <div class="custom-control custom-radio">
-                                                                    <input type="radio" required = "" id="customRadio6" name="kategori" class="custom-control-input"
-                                                                    value = "TEMPORER">
-                                                                    <label class="custom-control-label" for="customRadio6">TEMPORER</label>
-                                                                </div>
-                                                            </div>
-                                                            <div class="form-check-inline my-1">
-                                                                <div class="custom-control custom-radio">
-                                                                    <input type="radio" required = "" id="customRadio7" name="kategori" class="custom-control-input" 
-                                                                    value = "PERMANEN">
-                                                                    <label class="custom-control-label" for="customRadio7">PERMANEN</label>
-                                                                </div>
-                                                            </div>
-                                                            
-                                            </div>  </div>
-                                                  <div class="card-body bootstrap-select-1">
-                                        
-                                                    <h6 class="sub-title my-3">Tanggal Masuk</h6>
-                                                    <input type="text" id="date-format2" class="form-control" name = "tglmasuk" 
-                                                    required = "" >
-                                                    
-                                                </div>
-                                            <div class="row" style = "margin : 0px 10px 0px 10px;">
-                                                <div class="col-md-6">
-                                                    <h6 class="sub-title mb-3">Relay Kerja</h6>
-                                               
-                                                </div>
-                                                <div class="col-md-6">
-                                                <select class="select2 form-control mb-3 custom-select" name = "relay">
-                                                <option value = ""></option>
-                                                <option value = "DGR">DGR</option>
-                                                <option value = "EF">EF</option>
-                                                <option value = "OCR">OCR</option>
-                                                <option value = "OCR-INSTANT">OCR-INSTANT</option>
-                                             
-                                                       </select>
-                                                            
-                                            </div>  </div>
-                                            <div class="row" style = "margin : 0px 10px 0px 10px;">
-                                                <div class="col-md-4">
-                                                    <h6 class="sub-title mb-3">Fasa</h6>                                            
-                                                    <select class="select2 form-control mb-3 custom-select" name = "fasa" >
-                                                <option value = ""></option>
-                                                <option value = "R">R</option>
-                                                <option value = "RS">RS</option>
-                                                <option value = "RST">RST</option>
-                                                <option value = "RT">RT</option>
-                                                <option value = "S">S</option>
-                                                <option value = "ST">ST</option>
-                                                <option value = "T">T</option>
-                                             
-                                                       </select>
-                                                </div>                                    
-                                                <div class="col-md-4">
-                                                    <h6 class="sub-title mb-3">KV 0</h6>                                            
-                                                    <input type="number" value="0" class="form-control"  name="kv0"  />
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <h6 class="sub-title mb-3">I N</h6>                                           
-                                                    <input type="number"  value="0" class="form-control"  name="inol"  />
-                                                </div>
-                                            </div>                                
-                                              <div class="row" style = "margin : 0px 10px 0px 10px;">
-                                                <div class="col-md-4">
-                                                    <h6 class="sub-title mb-3">I R</h6>                                            
-                                                    <input type="number"  value="0" class="form-control"  name="ir"  />
-                                                </div>                                    
-                                                <div class="col-md-4">
-                                                    <h6 class="sub-title mb-3">I S</h6>                                            
-                                                    <input type="number"  value="0" class="form-control"  name="ies"  />
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <h6 class="sub-title mb-3">I T</h6>                                           
-                                                    <input type="number"  value="0" class="form-control"  name="it"  />
-                                                </div>
-                                            </div>
-                                            <div class="row" style = "margin : 0px 0px 10px 10px;">
-                                                <div class="col-md-6">
-                                                    <h6 class="sub-title mb-3">Cuaca</h6>
-                                                  <select class="select2 form-control mb-3 custom-select" name = "cuaca" required=""  >
-                                                <option value = ""></option>
-                                                <?php
-include "connect.php";
-		$v = mysql_query("select * from kodecuaca");
-		while($vata = mysql_fetch_object($v))
-		{
-			echo "<option value= $vata->idcuaca >$vata->uraiancuaca</option>";
-		}
-		
-	
+            <div class="row">
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Pilih Kategori</h6>
+                    <div class="form-check-inline my-1">
+                        <div class="custom-control custom-radio">
+                            <input type="radio" required id="customRadio6" name="kategori" class="custom-control-input" value="TEMPORER">
+                            <label class="custom-control-label" for="customRadio6">TEMPORER</label>
+                        </div>
+                    </div>
+                    <div class="form-check-inline my-1">
+                        <div class="custom-control custom-radio">
+                            <input type="radio" required id="customRadio7" name="kategori" class="custom-control-input" value="PERMANEN">
+                            <label class="custom-control-label" for="customRadio7">PERMANEN</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Tanggal Masuk</h6>
+                    <input type="text" id="date-format2" class="form-control" name="tglmasuk" required>
+                </div>
+            </div>
 
-?>
-                                                       </select>
-                                                </div>
-                                                <div class="col-md-6">
-                                                   <h6 class="sub-title mb-3">Jenis Gangguan</h6>
-                                                  <select class="select2 form-control mb-3 custom-select" name = "jenisgangguan" required="" >
-                                                <option value = ""></option>
-                                                <?php
-include "connect.php";
-		$v = mysql_query("select * from kodejenisgangguan");
-		while($vata = mysql_fetch_object($v))
-		{
-			echo "<option value= $vata->idjenisgangguan >$vata->uraianjenisgangguan</option>";
-		}
-		
-	
+            <div class="row">
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Relay Kerja</h6>
+                    <select class="select2 form-control custom-select" name="relay" style="width: 100%;">
+                        <option value=""></option>
+                        <option value="DGR">DGR</option>
+                        <option value="EF">EF</option>
+                        <option value="OCR">OCR</option>
+                        <option value="OCR-INSTANT">OCR-INSTANT</option>
+                    </select>
+                </div>
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Fasa</h6>
+                    <select class="select2 form-control custom-select" name="fasa" style="width: 100%;">
+                        <option value=""></option>
+                        <option value="R">R</option>
+                        <option value="RS">RS</option>
+                        <option value="RST">RST</option>
+                        <option value="RT">RT</option>
+                        <option value="S">S</option>
+                        <option value="ST">ST</option>
+                        <option value="T">T</option>
+                    </select>
+                </div>
+            </div>
 
-?>
-                                                       </select>
-                                                            
-                                            </div>  </div>
-                                              <div class="row" style = "margin : 0px 0px 10px 10px;">
-                                                <div class="col-md-6">
-                                                    <h6 class="sub-title mb-3">Latitude Lokasi</h6>
-                                                <input type="text"  class="form-control" style = "text-transform:uppercase";  name="latlokasi"  />
-                                                </div>
-                                                <div class="col-md-6">
-                                                   <h6 class="sub-title mb-3">Longitude Lokasi</h6>
-                                                 <input type="text"   class="form-control" style = "text-transform:uppercase";  name="longlokasi"  />
-                                                            
-                                            </div>  </div>
-                                             <div class="m-t-20"  style = "margin : 0px 10px 0px 20px;">
-                                                <h6 class="sub-title"><b>Hasil Temuan</b></h6>
-                                              
-                                                <textarea id="textarea" class="form-control" style = "text-transform:uppercase";  name="temuan" rows="3" ></textarea>
-                                            </div> 
-                                          <div class="row" style = "margin : 0px 0px 10px 10px;">
-                                                <div class="col-md-6">
-                                                    <h6 class="sub-title mb-3">Foto 1</h6>
-                                                  <input type="file"  accept="image/*" class="form-control"  name="file1"  />
-                                                </div>
-                                                <div class="col-md-6">
-                                                   <h6 class="sub-title mb-3">Foto 2</h6>
-                                                 
-                                                  <input type="file" accept="image/*" class="form-control"  name="file2"  />             
-                                            </div>  </div>
-                                                   <button type="submit" class="btn btn-primary btn-lg btn-block">Submit</button>
-                                    </div>
-                                    </div>
-                                    </form>  
+            <div class="row">
+                <div class="col-md-4 col-12 mb-3">
+                    <h6 class="sub-title mb-3">KV 0</h6>
+                    <input type="number" value="0" class="form-control" name="kv0" />
+                </div>
+                <div class="col-md-4 col-12 mb-3">
+                    <h6 class="sub-title mb-3">I N</h6>
+                    <input type="number" value="0" class="form-control" name="inol" />
+                </div>
+                <div class="col-md-4 col-12 mb-3">
+                    <h6 class="sub-title mb-3">I R</h6>
+                    <input type="number" value="0" class="form-control" name="ir" />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">I S</h6>
+                    <input type="number" value="0" class="form-control" name="ies" />
+                </div>
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">I T</h6>
+                    <input type="number" value="0" class="form-control" name="it" />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Cuaca</h6>
+                    <select class="select2 form-control custom-select" name="cuaca" required style="width: 100%;">
+                        <option value=""></option>
+                        <?php
+                        include "connect.php";
+                        $v = mysql_query("select * from kodecuaca");
+                        while($vata = mysql_fetch_object($v))
+                        {
+                            echo "<option value= '$vata->idcuaca' >$vata->uraiancuaca</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Jenis Gangguan</h6>
+                    <select class="select2 form-control custom-select" name="jenisgangguan" required style="width: 100%;">
+                        <option value=""></option>
+                        <?php
+                        include "connect.php";
+                        $v = mysql_query("select * from kodejenisgangguan");
+                        while($vata = mysql_fetch_object($v))
+                        {
+                            echo "<option value= '$vata->idjenisgangguan' >$vata->uraianjenisgangguan</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Latitude Lokasi</h6>
+                    <input type="text" class="form-control" style="text-transform:uppercase;" name="latlokasi" />
+                </div>
+                <div class="col-md-6 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Longitude Lokasi</h6>
+                    <input type="text" class="form-control" style="text-transform:uppercase;" name="longlokasi" />
+                </div>
+            </div>
+
+            <div class="form-group mb-3">
+                <h6 class="sub-title"><b>Hasil Temuan</b></h6>
+                <textarea id="textarea" class="form-control" style="text-transform:uppercase;" name="temuan" rows="3"></textarea>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-6 col-12 mb-3 mb-md-0">
+                    <h6 class="sub-title mb-3">Foto 1</h6>
+                    <input type="file" accept="image/*" class="form-control" name="file1" />
+                </div>
+                <div class="col-md-6 col-12">
+                    <h6 class="sub-title mb-3">Foto 2</h6>
+                    <input type="file" accept="image/*" class="form-control" name="file2" />
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Submit</button>
+        </div>
+    </div>
+    </form>  
                                   
         <!-- jQuery  -->
         <script src="assets/js/jquery.min.js"></script>

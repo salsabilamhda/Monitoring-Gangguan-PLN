@@ -327,6 +327,72 @@ if ($q_outages) {
 
 $selected_month_name = ($selected_bulan !== 'ALL' && isset($month_names[$selected_bulan])) ? $month_names[$selected_bulan] : 'Bulan Ini';
 $selected_year_name = ($selected_tahun !== 'ALL') ? $selected_tahun : date('Y');
+
+// 8. Recloser Trip Baseline and Tambahan Data (April 2026 default, dynamic by filter)
+$target_bulan = ($selected_bulan !== 'ALL' && is_numeric($selected_bulan)) ? (int)$selected_bulan : 4;
+$target_tahun = ($selected_tahun !== 'ALL' && is_numeric($selected_tahun)) ? (int)$selected_tahun : 2026;
+
+$ulp_code_filter = '';
+if ($selected_unit == '51540') $ulp_code_filter = "AND a.ulp = 'PNG'";
+elseif ($selected_unit == '51541') $ulp_code_filter = "AND a.ulp = 'BLG'";
+elseif ($selected_unit == '51542') $ulp_code_filter = "AND a.ulp = 'PCT'";
+elseif ($selected_unit == '51543') $ulp_code_filter = "AND a.ulp = 'TGK'";
+
+$q_temp = mysql_query("
+    SELECT 
+        a.recloser_name, 
+        a.ulp, 
+        a.jumlah_apkt,
+        a.keypointid,
+        a.penyulang_code,
+        COALESCE(
+            (SELECT COUNT(*) FROM datagangguan dg 
+             LEFT JOIN v_keypoint vk ON dg.keypointid = vk.idkeypoint
+             LEFT JOIN v_penyulang vp ON dg.penyulang = vp.kodepenyul
+             WHERE 
+                (
+                    (a.keypointid IS NOT NULL AND dg.keypointid = a.keypointid) OR
+                    (a.penyulang_code IS NOT NULL AND dg.penyulang = a.penyulang_code AND dg.kat_gangguan = 'PMT') OR
+                    (a.keypointid IS NULL AND a.penyulang_code IS NULL AND vk.keterangan LIKE CONCAT('%', TRIM(REPLACE(REPLACE(a.recloser_name, 'REC ', ''), 'PMCB ', '')), '%'))
+                )
+                AND dg.kategorigangguan = 'TEMPORER'
+                AND MONTH(dg.tglgangguan) = $target_bulan
+                AND YEAR(dg.tglgangguan) = $target_tahun
+            ), 0
+        ) as tambahan
+    FROM data_apkt a
+    WHERE a.tipe = 'TEMPORER' AND a.bulan = $target_bulan AND a.tahun = $target_tahun $ulp_code_filter
+    ORDER BY (a.jumlah_apkt + tambahan) DESC
+    LIMIT 10
+");
+
+$q_perm = mysql_query("
+    SELECT 
+        a.recloser_name, 
+        a.ulp, 
+        a.jumlah_apkt,
+        a.keypointid,
+        a.penyulang_code,
+        COALESCE(
+            (SELECT COUNT(*) FROM datagangguan dg 
+             LEFT JOIN v_keypoint vk ON dg.keypointid = vk.idkeypoint
+             LEFT JOIN v_penyulang vp ON dg.penyulang = vp.kodepenyul
+             WHERE 
+                (
+                    (a.keypointid IS NOT NULL AND dg.keypointid = a.keypointid) OR
+                    (a.penyulang_code IS NOT NULL AND dg.penyulang = a.penyulang_code AND dg.kat_gangguan = 'PMT') OR
+                    (a.keypointid IS NULL AND a.penyulang_code IS NULL AND vk.keterangan LIKE CONCAT('%', TRIM(REPLACE(REPLACE(a.recloser_name, 'REC ', ''), 'PMCB ', '')), '%'))
+                )
+                AND dg.kategorigangguan = 'PERMANEN'
+                AND MONTH(dg.tglgangguan) = $target_bulan
+                AND YEAR(dg.tglgangguan) = $target_tahun
+            ), 0
+        ) as tambahan
+    FROM data_apkt a
+    WHERE a.tipe = 'PERMANEN' AND a.bulan = $target_bulan AND a.tahun = $target_tahun $ulp_code_filter
+    ORDER BY (a.jumlah_apkt + tambahan) DESC
+    LIMIT 10
+");
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -631,6 +697,102 @@ $selected_year_name = ($selected_tahun !== 'ALL') ? $selected_tahun : date('Y');
           </div>
           <div class="chart-container" style="height: 350px;">
             <canvas id="keypointChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 4: Recloser Trip Tertinggi -->
+  <div class="row g-4 mb-4">
+    <!-- 10 Temporer Recloser Trip Tertinggi -->
+    <div class="col-lg-6 col-md-12 d-flex">
+      <div class="card h-100 w-100">
+        <div class="card-body">
+          <div class="chart-title">
+            <i class="fa fa-retweet me-2"></i>10 Temporer Recloser Trip Tertinggi (<?php echo $selected_month_name . ' ' . $selected_year_name; ?>)
+          </div>
+          <div class="table-responsive" style="margin-top: 15px;">
+            <table class="table table-striped table-bordered text-center align-middle" style="font-size: 13px;">
+              <thead class="table-dark">
+                <tr>
+                  <th style="width: 8%;">No</th>
+                  <th>Recloser</th>
+                  <th style="width: 15%;">ULP</th>
+                  <th style="width: 25%; background-color: #242c6d; color: white;">BASELINE (APKT)</th>
+                  <th style="width: 20%;">Tambahan</th>
+                  <th style="width: 15%; font-weight: bold;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php
+                $no_temp = 1;
+                while ($r = mysql_fetch_assoc($q_temp)):
+                  $total = $r['jumlah_apkt'] + $r['tambahan'];
+                ?>
+                  <tr>
+                    <td><?php echo $no_temp++; ?></td>
+                    <td class="text-start fw-bold"><?php echo htmlspecialchars($r['recloser_name']); ?></td>
+                    <td><span class="badge bg-secondary"><?php echo htmlspecialchars($r['ulp']); ?></span></td>
+                    <td style="background-color: #fcf8e3; font-weight: bold; color: #242c6d;"><?php echo $r['jumlah_apkt']; ?></td>
+                    <td><?php echo $r['tambahan'] > 0 ? '<span class="badge bg-warning text-dark">+' . $r['tambahan'] . '</span>' : '-'; ?></td>
+                    <td class="fw-bold text-primary"><?php echo $total; ?></td>
+                  </tr>
+                <?php endwhile; ?>
+                <?php if ($no_temp == 1): ?>
+                  <tr>
+                    <td colspan="6" class="text-muted">Tidak ada data untuk filter bulan/tahun ini.</td>
+                  </tr>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10 Permanen Recloser Trip Tertinggi -->
+    <div class="col-lg-6 col-md-12 d-flex">
+      <div class="card h-100 w-100">
+        <div class="card-body">
+          <div class="chart-title">
+            <i class="fa fa-ban me-2"></i>10 Permanen Recloser Trip Tertinggi (<?php echo $selected_month_name . ' ' . $selected_year_name; ?>)
+          </div>
+          <div class="table-responsive" style="margin-top: 15px;">
+            <table class="table table-striped table-bordered text-center align-middle" style="font-size: 13px;">
+              <thead class="table-dark">
+                <tr>
+                  <th style="width: 8%;">No</th>
+                  <th>Recloser</th>
+                  <th style="width: 15%;">ULP</th>
+                  <th style="width: 25%; background-color: #dc3545; color: white;">BASELINE (APKT)</th>
+                  <th style="width: 20%;">Tambahan</th>
+                  <th style="width: 15%; font-weight: bold;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php
+                $no_perm = 1;
+                while ($r = mysql_fetch_assoc($q_perm)):
+                  $total = $r['jumlah_apkt'] + $r['tambahan'];
+                  $bg_class = ($no_perm == 1) ? 'style="background-color: #f8d7da; color: #721c24;"' : '';
+                ?>
+                  <tr <?php echo $bg_class; ?>>
+                    <td><?php echo $no_perm++; ?></td>
+                    <td class="text-start fw-bold"><?php echo htmlspecialchars($r['recloser_name']); ?></td>
+                    <td><span class="badge bg-secondary"><?php echo htmlspecialchars($r['ulp']); ?></span></td>
+                    <td style="background-color: #fcf8e3; font-weight: bold; color: #dc3545;"><?php echo $r['jumlah_apkt']; ?></td>
+                    <td><?php echo $r['tambahan'] > 0 ? '<span class="badge bg-danger">+' . $r['tambahan'] . '</span>' : '-'; ?></td>
+                    <td class="fw-bold text-danger"><?php echo $total; ?></td>
+                  </tr>
+                <?php endwhile; ?>
+                <?php if ($no_perm == 1): ?>
+                  <tr>
+                    <td colspan="6" class="text-muted">Tidak ada data untuk filter bulan/tahun ini.</td>
+                  </tr>
+                <?php endif; ?>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

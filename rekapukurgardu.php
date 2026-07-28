@@ -82,7 +82,7 @@ if (isset($_POST['hapus_semua'])) {
           <div class="row g-3 align-items-end">
             <div class="col-md-4">
               <label class="form-label fw-bold text-secondary">Filter Berdasarkan</label>
-              <select class="form-control" name="filter_tipe" id="filter_tipe" required>
+              <select class="form-select" name="filter_tipe" id="filter_tipe" required>
                 <option value="">-- Pilih Filter --</option>
                 <option value="trafo">Nama Trafo</option>
                 <option value="unit">Nama ULP</option>

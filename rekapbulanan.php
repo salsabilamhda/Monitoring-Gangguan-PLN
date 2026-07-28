@@ -50,6 +50,10 @@
         }
       }
     }
+    window.addEventListener('resize', function() {
+      var iframe = document.getElementsByName('frame23')[0];
+      if (iframe) resizeIframe(iframe);
+    });
   </script>
     </head>
 
@@ -59,92 +63,86 @@
     <h4 class="page-title">Rekap Bulanan</h4>
     <form action="monitbulanan.php" target="frame23" method="POST" enctype="multipart/form-data">
     <div class="card">
-                                       
-                                            <div class="row" style = "margin : 0px 0px 0px 10px; padding-top: 15px;">
-                                                <div class="col-md-4">
-                                                    <h6 class="sub-title mb-3">Pilih Bulan</h6>
-                                                    <select class="select2 form-control mb-3 custom-select" name="bulan" required>
-                                                        <option value="ALL" selected>Semua Bulan</option>
-                                                        <option value="1">Januari</option>
-                                                        <option value="2">Februari</option>
-                                                        <option value="3">Maret</option>
-                                                        <option value="4">April</option>
-                                                        <option value="5">Mei</option>
-                                                        <option value="6">Juni</option>
-                                                        <option value="7">Juli</option>
-                                                        <option value="8">Agustus</option>
-                                                        <option value="9">September</option>
-                                                        <option value="10">Oktober</option>
-                                                        <option value="11">November</option>
-                                                        <option value="12">Desember</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <h6 class="sub-title mb-3">Pilih Tahun</h6>
-                                                   <select class="select2 form-control mb-3 custom-select" name = "tahun" required="" >
-                                                <option value = ""></option>
-                                             <?php
-                $tahunSekarang = '2020';
-                $tahunMaju = 30; // contoh: tampilkan 10 tahun ke depan
-                for ($i = $tahunSekarang; $i <= $tahunSekarang + $tahunMaju; $i++) {
-                    $selected = ($i == date('Y')) ? 'selected' : '';
-                    echo "<option value=\"$i\" $selected>$i</option>";
-                }
-            ?>
-                                                       </select>
-                                                </div>
-                                                <div class="col-md-4">
-                                                   <h6 class="sub-title mb-3">Kategori Gangguan</h6>
-                                                 <div class="form-check-inline my-1">
-                                                                 <div class="custom-control custom-radio">
-                                                                    <input type="radio" id="customRadio4" required = "" name="option" class="custom-control-input"
-                                                                    value = "PMT">
-                                                                    <label class="custom-control-label" for="customRadio4">PMT</label>
-                                                                </div>
-                                                            </div>
-                                                            <div class="form-check-inline my-1">
-                                                                <div class="custom-control custom-radio">
-                                                                    <input type="radio" id="customRadio5" required = "" name="option" class="custom-control-input" 
-                                                                    value = "REC">
-                                                                    <label class="custom-control-label" for="customRadio5">REC / PMCB</label>
-                                                                </div>
-                                                            </div>
-                                                             <div class="form-check-inline my-1">
-                                                                <div class="custom-control custom-radio">
-                                                                    <input type="radio" id="customRadio6" required = "" name="option" class="custom-control-input"
-                                                                    value = "ALL" checked>
-                                                                    <label class="custom-control-label" for="customRadio6">ALL</label>
-                                                                </div>
-                                                            </div>
-                                                            
-                                            </div>  </div>
-                                              <div class="card-body bootstrap-select-1">
-                                        
-                                                    <h6 class="sub-title my-3">Unit</h6>
-                                                 <select class="form-control select2" name="unit" required>
-    <option value="">Pilih Unit</option>
-
-    <?php
-    include "connect.php";
-
-    $v = mysql_query("SELECT * FROM kodeunit ORDER BY uraian");
-
-    while($r = mysql_fetch_assoc($v))
-    {
-        ?>
-        <option value="<?php echo $r['kodeunit']; ?>" <?php echo ($r['kodeunit'] == '5125') ? 'selected' : ''; ?>>
-            <?php echo $r['uraian']; ?>
-        </option>
-        <?php
-    }
-    ?>
-</select>
-                                                    
-                                                </div>
-                                               <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
-                                     </div>  
-                                     </div>
-                                     </form>  
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Pilih Bulan</h6>
+                    <select class="select2 form-control custom-select" name="bulan" required style="width: 100%;">
+                        <option value="ALL" selected>Semua Bulan</option>
+                        <option value="1">Januari</option>
+                        <option value="2">Februari</option>
+                        <option value="3">Maret</option>
+                        <option value="4">April</option>
+                        <option value="5">Mei</option>
+                        <option value="6">Juni</option>
+                        <option value="7">Juli</option>
+                        <option value="8">Agustus</option>
+                        <option value="9">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                    </select>
+                </div>
+                <div class="col-md-4 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Pilih Tahun</h6>
+                    <select class="select2 form-control custom-select" name="tahun" required style="width: 100%;">
+                        <option value=""></option>
+                        <?php
+                        $tahunSekarang = '2020';
+                        $tahunMaju = 30;
+                        for ($i = $tahunSekarang; $i <= $tahunSekarang + $tahunMaju; $i++) {
+                            $selected = ($i == date('Y')) ? 'selected' : '';
+                            echo "<option value=\"$i\" $selected>$i</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="col-md-4 col-12 mb-3">
+                    <h6 class="sub-title mb-3">Kategori Gangguan</h6>
+                    <div class="form-check-inline my-1">
+                        <div class="custom-control custom-radio">
+                            <input type="radio" id="customRadio4" required name="option" class="custom-control-input" value="PMT">
+                            <label class="custom-control-label" for="customRadio4">PMT</label>
+                        </div>
+                    </div>
+                    <div class="form-check-inline my-1">
+                        <div class="custom-control custom-radio">
+                            <input type="radio" id="customRadio5" required name="option" class="custom-control-input" value="REC">
+                            <label class="custom-control-label" for="customRadio5">REC / PMCB</label>
+                        </div>
+                    </div>
+                    <div class="form-check-inline my-1">
+                        <div class="custom-control custom-radio">
+                            <input type="radio" id="customRadio6" required name="option" class="custom-control-input" value="ALL" checked>
+                            <label class="custom-control-label" for="customRadio6">ALL</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <h6 class="sub-title mb-3">Unit</h6>
+                    <select class="form-control select2" name="unit" required style="width: 100%;">
+                        <option value="">Pilih Unit</option>
+                        <?php
+                        include "connect.php";
+                        $v = mysql_query("SELECT * FROM kodeunit ORDER BY uraian");
+                        while($r = mysql_fetch_assoc($v))
+                        {
+                            ?>
+                            <option value="<?php echo $r['kodeunit']; ?>" <?php echo ($r['kodeunit'] == '5125') ? 'selected' : ''; ?>>
+                                <?php echo $r['uraian']; ?>
+                            </option>
+                            <?php
+                        }
+                        ?>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Pilih</button>
+        </div>
+    </div>
+    </form>  
                                       <div style="width: 100%; margin: 10px 0 0 0; overflow: hidden;">
                                           <iframe onload="resizeIframe(this)" allowTransparency="true" frameborder="0" scrolling="no" style="width:100%; border:none;" name="frame23" src="monitbulanan.php" ></iframe>
                                       </div>

@@ -345,6 +345,13 @@ if ($q_latest && mysql_num_rows($q_latest) > 0) {
     $latest_date_rec = $row_latest[0];
 }
 
+// Build tambahan expression safely (only if we have a valid latest date)
+$tambahan_expr_temp = !empty($latest_date_rec)
+    ? "SUM(IF(DATE(tglgangguan) = '" . mysql_real_escape_string($latest_date_rec) . "', hitung, 0))"
+    : "0";
+
+$tambahan_expr_perm = $tambahan_expr_temp; // same date applies to both
+
 // Query Temporer recloser trips from monitoring bulanan
 $q_temp = mysql_query("
     SELECT 
@@ -357,7 +364,7 @@ $q_temp = mysql_query("
             ELSE 'UP3'
         END as ulp,
         SUM(hitung) as jumlah_trip,
-        SUM(IF(DATE(tglgangguan) = '$latest_date_rec', hitung, 0)) as tambahan
+        $tambahan_expr_temp as tambahan
     FROM v_datagangguan
     $where_sql_rec AND kategorigangguan = 'TEMPORER'
     GROUP BY recloser_name, ulp
@@ -377,7 +384,7 @@ $q_perm = mysql_query("
             ELSE 'UP3'
         END as ulp,
         SUM(hitung) as jumlah_trip,
-        SUM(IF(DATE(tglgangguan) = '$latest_date_rec', hitung, 0)) as tambahan
+        $tambahan_expr_perm as tambahan
     FROM v_datagangguan
     $where_sql_rec AND kategorigangguan = 'PERMANEN'
     GROUP BY recloser_name, ulp

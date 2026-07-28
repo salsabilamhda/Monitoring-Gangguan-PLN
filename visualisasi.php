@@ -328,69 +328,74 @@ if ($q_outages) {
 $selected_month_name = ($selected_bulan !== 'ALL' && isset($month_names[$selected_bulan])) ? $month_names[$selected_bulan] : 'Bulan Ini';
 $selected_year_name = ($selected_tahun !== 'ALL') ? $selected_tahun : date('Y');
 
-// 8. Recloser Trip Baseline and Tambahan Data (April 2026 default, dynamic by filter)
-$target_bulan = ($selected_bulan !== 'ALL' && is_numeric($selected_bulan)) ? (int)$selected_bulan : 4;
-$target_tahun = ($selected_tahun !== 'ALL' && is_numeric($selected_tahun)) ? (int)$selected_tahun : 2026;
+// 8. Recloser Trip Data (Queried dynamically from monthly monitoring view v_datagangguan)
+$where_parts_temp = [];
 
-$ulp_code_filter = '';
-if ($selected_unit == '51540') $ulp_code_filter = "AND a.ulp = 'PNG'";
-elseif ($selected_unit == '51541') $ulp_code_filter = "AND a.ulp = 'BLG'";
-elseif ($selected_unit == '51542') $ulp_code_filter = "AND a.ulp = 'PCT'";
-elseif ($selected_unit == '51543') $ulp_code_filter = "AND a.ulp = 'TGK'";
+if ($selected_tahun !== 'ALL' && is_numeric($selected_tahun)) {
+    $where_parts_temp[] = "YEAR(tglgangguan) = " . (int)$selected_tahun;
+} else {
+    // If no year selected, default to current year
+    $where_parts_temp[] = "YEAR(tglgangguan) = " . (int)date('Y');
+}
+
+if ($selected_bulan !== 'ALL' && is_numeric($selected_bulan)) {
+    $where_parts_temp[] = "MONTH(tglgangguan) = " . (int)$selected_bulan;
+}
+
+if ($selected_unit !== 'ALL') {
+    $where_parts_temp[] = "unit = '" . mysql_real_escape_string($selected_unit) . "'";
+}
+
+$where_sql_temp = "";
+if (!empty($where_parts_temp)) {
+    $where_sql_temp = "WHERE " . implode(" AND ", $where_parts_temp);
+} else {
+    $where_sql_temp = "WHERE 1=1";
+}
+
+// Find latest date in selected filter range
+$latest_date = null;
+$q_latest_date = mysql_query("SELECT MAX(DATE(tglgangguan)) FROM v_datagangguan $where_sql_temp");
+if ($q_latest_date && mysql_num_rows($q_latest_date) > 0) {
+    $row_date = mysql_fetch_array($q_latest_date);
+    $latest_date = $row_date[0];
+}
 
 $q_temp = mysql_query("
     SELECT 
-        a.recloser_name, 
-        a.ulp, 
-        a.jumlah_apkt,
-        a.keypointid,
-        a.penyulang_code,
-        COALESCE(
-            (SELECT COUNT(*) FROM datagangguan dg 
-             LEFT JOIN v_keypoint vk ON dg.keypointid = vk.idkeypoint
-             LEFT JOIN v_penyulang vp ON dg.penyulang = vp.kodepenyul
-             WHERE 
-                (
-                    (a.keypointid IS NOT NULL AND dg.keypointid = a.keypointid) OR
-                    (a.penyulang_code IS NOT NULL AND dg.penyulang = a.penyulang_code AND dg.kat_gangguan = 'PMT') OR
-                    (a.keypointid IS NULL AND a.penyulang_code IS NULL AND vk.keterangan LIKE CONCAT('%', TRIM(REPLACE(REPLACE(a.recloser_name, 'REC ', ''), 'PMCB ', '')), '%'))
-                )
-                AND dg.kategorigangguan = 'TEMPORER'
-                AND MONTH(dg.tglgangguan) = $target_bulan
-                AND YEAR(dg.tglgangguan) = $target_tahun
-            ), 0
-        ) as tambahan
-    FROM data_apkt a
-    WHERE a.tipe = 'TEMPORER' AND a.bulan = $target_bulan AND a.tahun = $target_tahun $ulp_code_filter
-    ORDER BY (a.jumlah_apkt + tambahan) DESC
+        IF(keterangan != '', keterangan, CONCAT('PMT ', uraianpenyul)) as recloser_name,
+        CASE 
+            WHEN unit = '51540' THEN 'PNG'
+            WHEN unit = '51541' THEN 'BLG'
+            WHEN unit = '51542' THEN 'PCT'
+            WHEN unit = '51543' THEN 'TGK'
+            ELSE 'UP3'
+        END as ulp,
+        SUM(hitung) as total,
+        SUM(IF(DATE(tglgangguan) = '$latest_date', hitung, 0)) as tambahan
+    FROM v_datagangguan
+    $where_sql_temp AND kategorigangguan = 'TEMPORER'
+    GROUP BY recloser_name, ulp
+    ORDER BY total DESC
     LIMIT 10
 ");
 
 $q_perm = mysql_query("
     SELECT 
-        a.recloser_name, 
-        a.ulp, 
-        a.jumlah_apkt,
-        a.keypointid,
-        a.penyulang_code,
-        COALESCE(
-            (SELECT COUNT(*) FROM datagangguan dg 
-             LEFT JOIN v_keypoint vk ON dg.keypointid = vk.idkeypoint
-             LEFT JOIN v_penyulang vp ON dg.penyulang = vp.kodepenyul
-             WHERE 
-                (
-                    (a.keypointid IS NOT NULL AND dg.keypointid = a.keypointid) OR
-                    (a.penyulang_code IS NOT NULL AND dg.penyulang = a.penyulang_code AND dg.kat_gangguan = 'PMT') OR
-                    (a.keypointid IS NULL AND a.penyulang_code IS NULL AND vk.keterangan LIKE CONCAT('%', TRIM(REPLACE(REPLACE(a.recloser_name, 'REC ', ''), 'PMCB ', '')), '%'))
-                )
-                AND dg.kategorigangguan = 'PERMANEN'
-                AND MONTH(dg.tglgangguan) = $target_bulan
-                AND YEAR(dg.tglgangguan) = $target_tahun
-            ), 0
-        ) as tambahan
-    FROM data_apkt a
-    WHERE a.tipe = 'PERMANEN' AND a.bulan = $target_bulan AND a.tahun = $target_tahun $ulp_code_filter
-    ORDER BY (a.jumlah_apkt + tambahan) DESC
+        IF(keterangan != '', keterangan, CONCAT('PMT ', uraianpenyul)) as recloser_name,
+        CASE 
+            WHEN unit = '51540' THEN 'PNG'
+            WHEN unit = '51541' THEN 'BLG'
+            WHEN unit = '51542' THEN 'PCT'
+            WHEN unit = '51543' THEN 'TGK'
+            ELSE 'UP3'
+        END as ulp,
+        SUM(hitung) as total,
+        SUM(IF(DATE(tglgangguan) = '$latest_date', hitung, 0)) as tambahan
+    FROM v_datagangguan
+    $where_sql_temp AND kategorigangguan = 'PERMANEN'
+    GROUP BY recloser_name, ulp
+    ORDER BY total DESC
     LIMIT 10
 ");
 ?>
@@ -719,7 +724,7 @@ $q_perm = mysql_query("
                   <th style="width: 8%;">No</th>
                   <th>Recloser</th>
                   <th style="width: 15%;">ULP</th>
-                  <th style="width: 25%; background-color: #242c6d; color: white;">BASELINE (APKT)</th>
+                  <th style="width: 25%; background-color: #242c6d; color: white;"><?php echo htmlspecialchars(strtoupper($selected_month_name)); ?></th>
                   <th style="width: 20%;">Tambahan</th>
                   <th style="width: 15%; font-weight: bold;">Total</th>
                 </tr>
@@ -728,15 +733,16 @@ $q_perm = mysql_query("
                 <?php
                 $no_temp = 1;
                 while ($r = mysql_fetch_assoc($q_temp)):
-                  $total = $r['jumlah_apkt'] + $r['tambahan'];
+                  $tambahan = (int)$r['tambahan'];
+                  $baseline = (int)$r['total'] - $tambahan;
                 ?>
                   <tr>
                     <td><?php echo $no_temp++; ?></td>
                     <td class="text-start fw-bold"><?php echo htmlspecialchars($r['recloser_name']); ?></td>
                     <td><span class="badge bg-secondary"><?php echo htmlspecialchars($r['ulp']); ?></span></td>
-                    <td style="background-color: #fcf8e3; font-weight: bold; color: #242c6d;"><?php echo $r['jumlah_apkt']; ?></td>
-                    <td><?php echo $r['tambahan'] > 0 ? '<span class="badge bg-warning text-dark">+' . $r['tambahan'] . '</span>' : '-'; ?></td>
-                    <td class="fw-bold text-primary"><?php echo $total; ?></td>
+                    <td style="background-color: #fcf8e3; font-weight: bold; color: #242c6d;"><?php echo $baseline; ?></td>
+                    <td><?php echo $tambahan > 0 ? '<span class="badge bg-warning text-dark">+' . $tambahan . '</span>' : '-'; ?></td>
+                    <td class="fw-bold text-primary"><?php echo $r['total']; ?></td>
                   </tr>
                 <?php endwhile; ?>
                 <?php if ($no_temp == 1): ?>
@@ -765,7 +771,7 @@ $q_perm = mysql_query("
                   <th style="width: 8%;">No</th>
                   <th>Recloser</th>
                   <th style="width: 15%;">ULP</th>
-                  <th style="width: 25%; background-color: #dc3545; color: white;">BASELINE (APKT)</th>
+                  <th style="width: 25%; background-color: #dc3545; color: white;"><?php echo htmlspecialchars(strtoupper($selected_month_name)); ?></th>
                   <th style="width: 20%;">Tambahan</th>
                   <th style="width: 15%; font-weight: bold;">Total</th>
                 </tr>
@@ -774,16 +780,17 @@ $q_perm = mysql_query("
                 <?php
                 $no_perm = 1;
                 while ($r = mysql_fetch_assoc($q_perm)):
-                  $total = $r['jumlah_apkt'] + $r['tambahan'];
+                  $tambahan = (int)$r['tambahan'];
+                  $baseline = (int)$r['total'] - $tambahan;
                   $bg_class = ($no_perm == 1) ? 'style="background-color: #f8d7da; color: #721c24;"' : '';
                 ?>
                   <tr <?php echo $bg_class; ?>>
                     <td><?php echo $no_perm++; ?></td>
                     <td class="text-start fw-bold"><?php echo htmlspecialchars($r['recloser_name']); ?></td>
                     <td><span class="badge bg-secondary"><?php echo htmlspecialchars($r['ulp']); ?></span></td>
-                    <td style="background-color: #fcf8e3; font-weight: bold; color: #dc3545;"><?php echo $r['jumlah_apkt']; ?></td>
-                    <td><?php echo $r['tambahan'] > 0 ? '<span class="badge bg-danger">+' . $r['tambahan'] . '</span>' : '-'; ?></td>
-                    <td class="fw-bold text-danger"><?php echo $total; ?></td>
+                    <td style="background-color: #fcf8e3; font-weight: bold; color: #dc3545;"><?php echo $baseline; ?></td>
+                    <td><?php echo $tambahan > 0 ? '<span class="badge bg-danger">+' . $tambahan . '</span>' : '-'; ?></td>
+                    <td class="fw-bold text-danger"><?php echo $r['total']; ?></td>
                   </tr>
                 <?php endwhile; ?>
                 <?php if ($no_perm == 1): ?>

@@ -47,6 +47,27 @@
                 }
             }
             
+            /* Sidebar toggle button styling */
+            .button-menu-mobile {
+                display: inline-block !important;
+                background-color: transparent !important;
+                color: #ffffff !important;
+                height: 70px !important;
+                line-height: 70px !important;
+                width: 60px !important;
+                font-size: 24px !important;
+                cursor: pointer !important;
+                transition: background-color 0.2s ease !important;
+                border: none !important;
+                border-radius: 0 !important;
+            }
+            .button-menu-mobile:hover {
+                background-color: rgba(255, 255, 255, 0.1) !important;
+            }
+            .navbar-custom {
+                padding-left: 10px !important;
+            }
+            
             /* Responsive layout for Split Screen on Laptop / Tablet */
             @media (min-width: 769px) and (max-width: 1150px) {
                 .left.side-menu {
@@ -57,6 +78,9 @@
                     margin-left: 0 !important;
                     width: 100vw !important;
                     max-width: 100vw !important;
+                }
+                .button-menu-mobile {
+                    display: inline-block !important;
                 }
                 /* Show sidebar and shift content when toggled (.enlarged) */
                 #wrapper.enlarged .left.side-menu {
@@ -72,18 +96,19 @@
             
             /* Premium Sidebar Theme & Typography overrides */
             .left.side-menu {
-                background: #1b204e !important;
+                background: #242c6d !important;
                 box-shadow: 2px 0 10px rgba(0,0,0,0.1) !important;
             }
             .sidebar-inner {
-                background: #1b204e !important;
+                background: #242c6d !important;
             }
             #sidebar-menu {
-                background: #1b204e !important;
+                background: #242c6d !important;
                 padding-top: 15px !important;
             }
             #sidebar-menu > ul > li > a {
                 color: rgba(255, 255, 255, 0.7) !important;
+                background-color: transparent !important;
                 margin: 4px 15px !important;
                 padding: 12px 20px !important;
                 border-radius: 8px !important;
@@ -94,17 +119,18 @@
             }
             #sidebar-menu > ul > li > a:hover {
                 color: #fff !important;
-                background: rgba(255, 255, 255, 0.08) !important;
+                background-color: rgba(255, 255, 255, 0.08) !important;
             }
             #sidebar-menu > ul > li.active > a,
             #sidebar-menu > ul > li > a.active {
                 color: #fff !important;
-                background: #242c6d !important;
-                box-shadow: 0 4px 12px rgba(36, 44, 109, 0.4) !important;
+                background-color: rgba(255, 255, 255, 0.15) !important;
+                box-shadow: 0 4px 12px rgba(255, 255, 255, 0.08) !important;
                 font-weight: 600 !important;
             }
             #sidebar-menu > ul > li > a i {
                 color: rgba(255, 255, 255, 0.6) !important;
+                background-color: transparent !important;
                 transition: all 0.3s ease !important;
                 font-size: 16px !important;
                 margin-right: 10px !important;
@@ -112,9 +138,10 @@
             #sidebar-menu > ul > li.active > a i,
             #sidebar-menu > ul > li > a:hover i {
                 color: #fff !important;
+                background-color: transparent !important;
             }
             #sidebar-menu ul li.has_sub ul.list-unstyled {
-                background: #15193d !important;
+                background: rgba(0, 0, 0, 0.15) !important;
                 padding: 5px 0 !important;
                 margin: 4px 15px !important;
                 border-radius: 8px !important;
@@ -154,7 +181,20 @@
                 min-height: 70px !important;
                 max-height: 70px !important;
                 line-height: 70px !important;
-                background-color: #1b204e !important;
+                background-color: #242c6d !important;
+            }
+            
+            /* Show logo on topbar only when sidebar is hidden */
+            #wrapper.enlarged .logo-topbar-collapsed {
+                display: inline-block !important;
+            }
+            @media (max-width: 1150px) {
+                .logo-topbar-collapsed {
+                    display: inline-block !important;
+                }
+                #wrapper.enlarged .logo-topbar-collapsed {
+                    display: none !important;
+                }
             }
             .navbar-custom {
                 width: 100% !important;
@@ -186,9 +226,7 @@
 
             <!-- ========== Left Sidebar Start ========== -->
             <div class="left side-menu">
-                <button type="button" class="button-menu-mobile button-menu-mobile-topbar open-left waves-effect">
-                    <i class="ion-close"></i>
-                </button>
+
 
                 <!-- LOGO -->
                 <div class="topbar-left" style="height: 70px !important; min-height: 70px !important; max-height: 70px !important; padding: 0 !important; margin: 0 !important; line-height: 70px !important; display: flex !important; align-items: center !important; justify-content: center !important; box-sizing: border-box !important;">

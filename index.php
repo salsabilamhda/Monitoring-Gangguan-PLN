@@ -95,13 +95,13 @@
                 width: 100% !important;
                 max-width: 100% !important;
                 height: 70px !important;
-                min-height: 70px !important;
-                max-height: 70px !important;
-                line-height: 70px !important;
                 background-color: #242c6d !important;
                 margin: 0 !important;
                 padding: 0 20px !important;
                 box-sizing: border-box !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
             }
             .navbar-custom p {
                 margin: 0 !important;
@@ -304,139 +304,50 @@
 
                         <nav class="navbar-custom">
 
-                            <ul class="list-inline float-right mb-0">
-                                <!-- language-->
-                             <!--   <li class="list-inline-item hide-phone app-search">
-                                    <form role="search" class="">
-                                        <input type="text" placeholder="Search..." class="form-control">
-                                        <a href=""><i class="fa fa-search"></i></a>
-                                    </form>
+                            <ul class="list-inline menu-left mb-0" style="display: inline-flex; align-items: center; height: 70px;">
+                                <li style="list-style: none;">
+                                    <button class="button-menu-mobile open-left waves-light waves-effect">
+                                        <i class="mdi mdi-menu"></i>
+                                    </button>
+                                </li>                                
+                            </ul>
+
+                            <ul class="list-inline float-right mb-0" style="display: inline-flex; align-items: center; height: 70px; margin: 0; padding: 0;">
+                                <li class="list-inline-item dropdown notification-list" style="height: 70px; display: inline-flex; align-items: center; margin: 0;">
+                                    <p style="color:#ffffff; font-weight: 600; margin: 0; padding: 0 15px;">
+                                        <script type="text/javascript">
+                                            function date_time(id)
+                                            {
+                                                date = new Date;
+                                                year = date.getFullYear();
+                                                month = date.getMonth();
+                                                months = new Array('Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember');
+                                                d = date.getDate();
+                                                day = date.getDay();
+                                                days = new Array('Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu');
+                                                h = date.getHours();
+                                                if(h<10) { h = "0"+h; }
+                                                m = date.getMinutes();
+                                                if(m<10) { m = "0"+m; }
+                                                s = date.getSeconds();
+                                                if(s<10) { s = "0"+s; }
+                                                result = ''+days[day]+', '+d+' '+months[month]+' '+year+' '+h+':'+m+':'+s;
+                                                document.getElementById(id).innerHTML = result;
+                                                setTimeout('date_time("'+id+'");','1000');
+                                                return true;
+                                            }
+                                        </script>
+                                        <span id="date_time"></span>
+                                        <script type="text/javascript">window.onload = date_time('date_time');</script>
+                                    </p>
                                 </li>
-                                <li class="list-inline-item dropdown notification-list hide-phone">
-                                    <a class="nav-link dropdown-toggle arrow-none waves-effect text-white" data-toggle="dropdown" href="#" role="button"
-                                        aria-haspopup="false" aria-expanded="false">
-                                        <img src="assets/images/flags/us_flag.jpg" class="ml-2" height="16" alt=""/>
-                                    </a>
-                                    <div class="dropdown-menu dropdown-menu-right language-switch">
-                                        <a class="dropdown-item" href="#"><img src="assets/images/flags/italy_flag.jpg" alt="" height="16"/><span> Italian </span></a>
-                                        <a class="dropdown-item" href="#"><img src="assets/images/flags/french_flag.jpg" alt="" height="16"/><span> French </span></a>
-                                        <a class="dropdown-item" href="#"><img src="assets/images/flags/spain_flag.jpg" alt="" height="16"/><span> Spanish </span></a>
-                                        <a class="dropdown-item" href="#"><img src="assets/images/flags/russia_flag.jpg" alt="" height="16"/><span> Russian </span></a>
-                                    </div>
-                                </li>
-                                <li class="list-inline-item dropdown notification-list">
-                                    <a class="nav-link dropdown-toggle arrow-none waves-effect" data-toggle="dropdown" href="#" role="button"
-                                       aria-haspopup="false" aria-expanded="false">
-                                        <i class="ti-email noti-icon"></i>
-                                        <span class="badge badge-danger noti-icon-badge">5</span>
-                                    </a>-->
-                                    <div class="dropdown-menu dropdown-menu-right dropdown-arrow dropdown-menu-lg">
-                                        <!-- item-->
-                                        <div class="dropdown-item noti-title">
-                                            <h5><span class="badge badge-danger float-right">745</span>Messages</h5>
-                                        </div>
 
-                                        <!-- item-->
-                                        <a href="javascript:void(0);" class="dropdown-item notify-item">
-                                            <div class="notify-icon"><img src="assets/images/users/avatar-2.jpg" alt="user-img" class="img-fluid rounded-circle" /> </div>
-                                            <p class="notify-details"><b>Charles M. Jones</b><small class="text-muted">Dummy text of the printing and typesetting industry.</small></p>
-                                        </a>
-
-                                        <!-- item-->
-                                        <a href="javascript:void(0);" class="dropdown-item notify-item">
-                                            <div class="notify-icon"><img src="assets/images/users/avatar-3.jpg" alt="user-img" class="img-fluid rounded-circle" /> </div>
-                                            <p class="notify-details"><b>Thomas J. Mimms</b><small class="text-muted">You have 87 unread messages</small></p>
-                                        </a>
-
-                                        <!-- item-->
-                                        <a href="javascript:void(0);" class="dropdown-item notify-item">
-                                            <div class="notify-icon"><img src="assets/images/users/avatar-4.jpg" alt="user-img" class="img-fluid rounded-circle" /> </div>
-                                            <p class="notify-details"><b>Luis M. Konrad</b><small class="text-muted">It is a long established fact that a reader will</small></p>
-                                        </a>
-
-                                        <!-- All-->
-                                        <a href="javascript:void(0);" class="dropdown-item notify-item">
-                                            View All
-                                        </a>
-
-                                    </div>
-                              <!--</li>-->
-
-                                <li class="list-inline-item dropdown notification-list">
-                                                                        <p style="color:#242c6d; font-weight: 600; margin: 0; padding: 10px 0;"> <script type="text/javascript">
-function date_time(id)
-{
-date = new Date;
-year = date.getFullYear();
-month = date.getMonth();
-months = new Array('Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember');
-d = date.getDate();
-day = date.getDay();
-days = new Array('Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu');
-h = date.getHours();
-if(h<10)
-{
-h = "0"+h;
-}
-m = date.getMinutes();
-if(m<10)
-{
-m = "0"+m;
-}
-s = date.getSeconds();
-if(s<10)
-{
-s = "0"+s;
-}
-result = ''+days[day]+', '+d+' '+months[month]+' '+year+' '+h+':'+m+':'+s;
-document.getElementById(id).innerHTML = result;
-setTimeout('date_time("'+id+'");','1000');
-return true;
-}
-</script>
-
- <span id="date_time"></span>
-<script type="text/javascript">window.onload = date_time('date_time');</script></p>
-                                    
-                                    <div class="dropdown-menu dropdown-menu-right dropdown-arrow dropdown-menu-lg">
-                                        <!-- item-->
-                                        <div class="dropdown-item noti-title">
-                                            <h5><span class="badge badge-danger float-right">87</span>Notification</h5>
-                                        </div>
-
-                                        <!-- item-->
-                                        <a href="javascript:void(0);" class="dropdown-item notify-item">
-                                            <div class="notify-icon bg-primary"><i class="mdi mdi-cart-outline"></i></div>
-                                            <p class="notify-details"><b>Your order is placed</b><small class="text-muted">Dummy text of the printing and typesetting industry.</small></p>
-                                        </a>
-
-                                        <!-- item-->
-                                        <a href="javascript:void(0);" class="dropdown-item notify-item">
-                                            <div class="notify-icon bg-success"><i class="mdi mdi-message"></i></div>
-                                            <p class="notify-details"><b>New Message received</b><small class="text-muted">You have 87 unread messages</small></p>
-                                        </a>
-
-                                        <!-- item-->
-                                        <a href="javascript:void(0);" class="dropdown-item notify-item">
-                                            <div class="notify-icon bg-warning"><i class="mdi mdi-martini"></i></div>
-                                            <p class="notify-details"><b>Your item is shipped</b><small class="text-muted">It is a long established fact that a reader will</small></p>
-                                        </a>
-
-                                        <!-- All-->
-                                        <a href="javascript:void(0);" class="dropdown-item notify-item">
-                                            View All
-                                        </a>
-
-                                    </div>
-                          <!--      </li>-->
-
-                             <li class="list-inline-item dropdown notification-list">
+                                <li class="list-inline-item dropdown notification-list" style="margin: 0;">
                                     <a class="nav-link dropdown-toggle arrow-none waves-effect nav-user" data-toggle="dropdown" href="#" role="button"
-                                       aria-haspopup="false" aria-expanded="false">
-                                      <p src="" alt="" class="rounded-circle">
+                                       aria-haspopup="false" aria-expanded="false" style="padding: 0 15px; display: inline-block;">
+                                       <span class="rounded-circle mdi mdi-account-circle" style="font-size: 28px; color: #ffffff;"></span>
                                     </a>
                                     <div class="dropdown-menu dropdown-menu-right profile-dropdown ">
-                                        <!-- item-->
                                         <div class="dropdown-item noti-title">
                                             <h5>Welcome</h5>
                                         </div>
@@ -448,18 +359,7 @@ return true;
                                         <a class="dropdown-item" href="#"><i class="mdi mdi-logout m-r-5 text-muted"></i> Logout</a>
                                     </div>
                                 </li>
-
                             </ul>
-
-                            <ul class="list-inline menu-left mb-0">
-                                <li class="float-left">
-                                    <button class="button-menu-mobile open-left waves-light waves-effect">
-                                        <i class="mdi mdi-menu"></i>
-                                    </button>
-                                </li>                                
-                            </ul>
-
-                            <div class="clearfix"></div>
 
                         </nav>
 
@@ -472,7 +372,7 @@ return true;
 
                      
                                 
-                                 <div style="width: 100%; margin: 0; padding: 0 15px; height: calc(100vh - 130px); box-sizing: border-box; overflow: hidden;">
+                                 <div style="width: 100%; margin: 0; padding: 20px 15px 0 15px; height: calc(100vh - 150px); box-sizing: border-box; overflow: hidden;">
                                      <iframe allowTransparency="true" frameborder="0" scrolling="auto" style="width:100%; height:100%; border:none;" name="frame2367" src='visualisasi.php'></iframe>
                                  </div>
                              </div>                            <!-- end page title end breadcrumb -->

@@ -51,7 +51,7 @@ if ($selected_tahun !== 'ALL' && !empty($selected_tahun)) {
 if ($selected_bulan !== 'ALL' && !empty($selected_bulan)) {
     $where_clauses[] = "MONTH(g.tglgangguan) = '" . mysql_real_escape_string($selected_bulan) . "'";
 }
-if ($selected_unit !== 'ALL' && !empty($selected_unit)) {
+if ($selected_unit !== 'ALL' && !empty($selected_unit) && $selected_unit !== '5125') {
     $where_clauses[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
     $where_clauses_no_month[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
 }
@@ -72,17 +72,17 @@ $q_total = mysql_query("SELECT COUNT(*) as total FROM datagangguan g $where_sql"
 $r_total = mysql_fetch_assoc($q_total);
 $total_gangguan = $r_total['total'];
 
-// Total PMT
+// Total PMT (Permanen)
 $pmt_clauses = $where_clauses;
-$pmt_clauses[] = "g.kat_gangguan = 'PMT'";
+$pmt_clauses[] = "g.kategorigangguan = 'PERMANEN'";
 $pmt_where_sql = "WHERE " . implode(" AND ", $pmt_clauses);
 $q_pmt = mysql_query("SELECT COUNT(*) as total FROM datagangguan g $pmt_where_sql");
 $r_pmt = mysql_fetch_assoc($q_pmt);
 $total_pmt = $r_pmt['total'];
 
-// Total REC
+// Total REC (Temporer)
 $rec_clauses = $where_clauses;
-$rec_clauses[] = "g.kat_gangguan = 'REC'";
+$rec_clauses[] = "g.kategorigangguan = 'TEMPORER'";
 $rec_where_sql = "WHERE " . implode(" AND ", $rec_clauses);
 $q_rec = mysql_query("SELECT COUNT(*) as total FROM datagangguan g $rec_where_sql");
 $r_rec = mysql_fetch_assoc($q_rec);
@@ -119,8 +119,8 @@ $top_weather = isset($r_top_weather['uraiancuaca']) ? $r_top_weather['uraiancuac
 $ulp_stats = [];
 $q_ulp_stats = mysql_query("
     SELECT u.uraian, g.unit,
-           SUM(CASE WHEN g.kat_gangguan = 'PMT' THEN 1 ELSE 0 END) as permanen,
-           SUM(CASE WHEN g.kat_gangguan = 'REC' THEN 1 ELSE 0 END) as temporer
+           SUM(CASE WHEN g.kategorigangguan = 'PERMANEN' THEN 1 ELSE 0 END) as permanen,
+           SUM(CASE WHEN g.kategorigangguan = 'TEMPORER' THEN 1 ELSE 0 END) as temporer
     FROM datagangguan g
     JOIN kodeunit u ON g.unit = u.kodeunit
     $where_sql
@@ -157,8 +157,8 @@ $available_months = [];
 
 $q_monthly_ulp = mysql_query("
     SELECT u.uraian, MONTH(g.tglgangguan) as bulan,
-           SUM(CASE WHEN g.kat_gangguan = 'PMT' THEN 1 ELSE 0 END) as permanen,
-           SUM(CASE WHEN g.kat_gangguan = 'REC' THEN 1 ELSE 0 END) as temporer
+           SUM(CASE WHEN g.kategorigangguan = 'PERMANEN' THEN 1 ELSE 0 END) as permanen,
+           SUM(CASE WHEN g.kategorigangguan = 'TEMPORER' THEN 1 ELSE 0 END) as temporer
     FROM datagangguan g
     JOIN kodeunit u ON g.unit = u.kodeunit
     $where_sql_no_month
@@ -245,25 +245,15 @@ $target_ulps = [
 
 foreach ($target_ulps as $ulp_id => $ulp_name) {
     $q_kp = mysql_query("
-        SELECT k.keterangan as nama_keypoint, k.kodepenyul,
-               (
-                   SELECT COUNT(*) 
-                   FROM datagangguan g 
-                   $where_sql AND g.keypointid = k.idkeypoint AND g.kat_gangguan = 'REC'
-               ) as temporer,
-               (
-                   SELECT COUNT(*) 
-                   FROM datagangguan g 
-                   $where_sql AND g.penyulang = k.kodepenyul AND g.kat_gangguan = 'PMT'
-               ) as permanen
-        FROM kodekeypoint k
-        WHERE k.unit = '$ulp_id' 
-          AND k.idkeypoint IN (
-              SELECT DISTINCT keypointid 
-              FROM datagangguan g
-              $where_sql AND g.keypointid != '' AND g.keypointid != '0'
-          )
-        ORDER BY (temporer + permanen) DESC
+        SELECT k.keterangan as nama_keypoint,
+               SUM(CASE WHEN g.kategorigangguan = 'TEMPORER' THEN 1 ELSE 0 END) as temporer,
+               SUM(CASE WHEN g.kategorigangguan = 'PERMANEN' THEN 1 ELSE 0 END) as permanen,
+               COUNT(*) as total
+        FROM datagangguan g
+        JOIN kodekeypoint k ON g.keypointid = k.idkeypoint
+        $where_sql AND g.unit = '$ulp_id'
+        GROUP BY k.keterangan
+        ORDER BY total DESC
         LIMIT 7
     ");
     
@@ -306,7 +296,7 @@ $outage_days = [];
 $q_outages = mysql_query("
     SELECT g.unit, DAY(g.tglgangguan) as hari
     FROM datagangguan g
-    $where_sql AND g.kat_gangguan = 'PMT'
+    $where_sql AND g.kategorigangguan = 'PERMANEN'
 ");
 if ($q_outages) {
     while ($row = mysql_fetch_assoc($q_outages)) {

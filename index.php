@@ -70,72 +70,7 @@
                 }
             }
             
-            /* Premium Sidebar Theme & Typography overrides */
-            .left.side-menu {
-                background: #1b204e !important;
-                box-shadow: 2px 0 10px rgba(0,0,0,0.1) !important;
-            }
-            .sidebar-inner {
-                background: #1b204e !important;
-            }
-            #sidebar-menu {
-                background: #1b204e !important;
-                padding-top: 15px !important;
-            }
-            #sidebar-menu > ul > li > a {
-                color: rgba(255, 255, 255, 0.7) !important;
-                margin: 4px 15px !important;
-                padding: 12px 20px !important;
-                border-radius: 8px !important;
-                transition: all 0.3s ease !important;
-                font-weight: 500 !important;
-                display: flex !important;
-                align-items: center !important;
-            }
-            #sidebar-menu > ul > li > a:hover {
-                color: #fff !important;
-                background: rgba(255, 255, 255, 0.08) !important;
-            }
-            #sidebar-menu > ul > li.active > a,
-            #sidebar-menu > ul > li > a.active {
-                color: #fff !important;
-                background: #242c6d !important;
-                box-shadow: 0 4px 12px rgba(36, 44, 109, 0.4) !important;
-                font-weight: 600 !important;
-            }
-            #sidebar-menu > ul > li > a i {
-                color: rgba(255, 255, 255, 0.6) !important;
-                transition: all 0.3s ease !important;
-                font-size: 16px !important;
-                margin-right: 10px !important;
-            }
-            #sidebar-menu > ul > li.active > a i,
-            #sidebar-menu > ul > li > a:hover i {
-                color: #fff !important;
-            }
-            #sidebar-menu ul li.has_sub ul.list-unstyled {
-                background: #15193d !important;
-                padding: 5px 0 !important;
-                margin: 4px 15px !important;
-                border-radius: 8px !important;
-            }
-            #sidebar-menu ul li.has_sub ul.list-unstyled li a {
-                color: rgba(255, 255, 255, 0.6) !important;
-                padding: 10px 20px 10px 35px !important;
-                transition: all 0.2s ease !important;
-                font-size: 13px !important;
-            }
-            #sidebar-menu ul li.has_sub ul.list-unstyled li a:hover {
-                color: #fff !important;
-                text-decoration: none !important;
-            }
-            #sidebar-menu .menu-title {
-                color: rgba(255, 255, 255, 0.35) !important;
-                font-size: 11px !important;
-                text-transform: uppercase !important;
-                letter-spacing: 1px !important;
-                padding: 15px 25px 5px 25px !important;
-            }
+
             .content {
                 width: 100% !important;
                 height: 100% !important;
@@ -154,7 +89,7 @@
                 min-height: 70px !important;
                 max-height: 70px !important;
                 line-height: 70px !important;
-                background-color: #1b204e !important;
+                background-color: #242c6d !important;
             }
             .navbar-custom {
                 width: 100% !important;

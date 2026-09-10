@@ -1,6 +1,9 @@
 <?php
 // PHP 7/8 Compatibility Shim for legacy mysql_* functions using mysqli
 if (!function_exists('mysql_connect')) {
+    if (function_exists('mysqli_report')) {
+        mysqli_report(MYSQLI_REPORT_OFF);
+    }
     global $__mysql_shim_link;
     $__mysql_shim_link = null;
 

@@ -278,28 +278,34 @@ $target_ulps = [
 
 foreach ($target_ulps as $ulp_id => $ulp_name) {
     $q_kp = mysql_query("
-        SELECT k.keterangan as nama_keypoint,
-               SUM(CASE WHEN g.kategorigangguan = 'TEMPORER' THEN 1 ELSE 0 END) as temporer,
-               SUM(CASE WHEN g.kategorigangguan = 'PERMANEN' THEN 1 ELSE 0 END) as permanen,
-               COUNT(*) as total
+        SELECT 
+            IF(COALESCE(k.keterangan, '') != '', k.keterangan, 'PMT') as nama_keypoint,
+            SUM(CASE WHEN UPPER(TRIM(g.kategorigangguan)) = 'TEMPORER' THEN 1 ELSE 0 END) as temporer,
+            SUM(CASE WHEN UPPER(TRIM(g.kategorigangguan)) = 'PERMANEN' THEN 1 ELSE 0 END) as permanen,
+            COUNT(*) as total
         FROM datagangguan g
-        JOIN kodekeypoint k ON g.keypointid = k.idkeypoint
+        LEFT JOIN kodekeypoint k ON g.keypointid = k.idkeypoint
         $where_sql AND g.unit = '$ulp_id'
-        GROUP BY k.keterangan
-        ORDER BY total DESC
-        LIMIT 7
+        GROUP BY nama_keypoint
     ");
     
     $kp_list = [];
     if ($q_kp) {
         while ($r_kp = mysql_fetch_assoc($q_kp)) {
-            $clean_name = preg_replace('/^(REC\b\.?|CO\b\.?|PMCB\b\.?|LBS\b\.?)\s*/i', '', $r_kp['nama_keypoint']);
+            $clean_name = preg_replace('/^(REC\b\.?|CO\b\.?|PMCB\b\.?|LBS\b\.?|FCO\b\.?)\s*/i', '', $r_kp['nama_keypoint']);
+            if ($clean_name === 'TOP') {
+                $clean_name = 'PT TOP';
+            }
             $kp_list[] = [
                 'name' => $clean_name,
                 'permanen' => (int)$r_kp['permanen'],
                 'temporer' => (int)$r_kp['temporer']
             ];
         }
+        // Urutkan alfabetis sesuai tampilan Excel
+        usort($kp_list, function($a, $b) {
+            return strcmp($a['name'], $b['name']);
+        });
     }
     $ulp_keypoint_data[$ulp_name] = $kp_list;
 }
@@ -307,30 +313,55 @@ foreach ($target_ulps as $ulp_id => $ulp_name) {
 $keypoint_labels = [];
 $keypoint_pmt = [];
 $keypoint_rec = [];
+$ulp_groups = [];
 
+$curr_idx = 0;
 foreach ($ulp_keypoint_data as $ulp_name => $kp_list) {
-    foreach ($kp_list as $kp) {
-        $keypoint_labels[] = [$kp['name'], $ulp_name];
-        $keypoint_pmt[] = $kp['permanen'];
-        $keypoint_rec[] = $kp['temporer'];
+    $cnt = count($kp_list);
+    if ($cnt > 0) {
+        $ulp_groups[] = [
+            'name' => $ulp_name,
+            'startIndex' => $curr_idx,
+            'endIndex' => $curr_idx + $cnt - 1,
+            'count' => $cnt
+        ];
+        foreach ($kp_list as $kp) {
+            $keypoint_labels[] = $kp['name'];
+            $keypoint_pmt[] = $kp['permanen'];
+            $keypoint_rec[] = $kp['temporer'];
+            $curr_idx++;
+        }
     }
 }
 
 // 5. Data Hari Tanpa Padam (Calendar Grid)
-$days_in_month = 31;
-if ($selected_bulan !== 'ALL' && is_numeric($selected_bulan)) {
-    $year = ($selected_tahun !== 'ALL' && is_numeric($selected_tahun)) ? (int)$selected_tahun : (int)date('Y');
-    $days_in_month = cal_days_in_month(CAL_GREGORIAN, (int)$selected_bulan, $year);
-} else {
-    $days_in_month = cal_days_in_month(CAL_GREGORIAN, (int)date('m'), ($selected_tahun !== 'ALL' && is_numeric($selected_tahun)) ? (int)$selected_tahun : (int)date('Y'));
+// Tentukan bulan dan tahun kalender secara akurat (tidak menggabungkan lintas tahun)
+$grid_bulan = ($selected_bulan !== 'ALL' && is_numeric($selected_bulan)) ? (int)$selected_bulan : (int)date('m');
+$grid_tahun = ($selected_tahun !== 'ALL' && is_numeric($selected_tahun)) ? (int)$selected_tahun : (!empty($years[0]) ? (int)$years[0] : (int)date('Y'));
+$grid_month_name = isset($month_names[$grid_bulan]) ? $month_names[$grid_bulan] : 'Bulan ' . $grid_bulan;
+$grid_title_text = "Hari Tanpa Padam - " . $grid_month_name . " " . $grid_tahun;
+
+$days_in_month = cal_days_in_month(CAL_GREGORIAN, $grid_bulan, $grid_tahun);
+
+// Filter kalender khusus untuk bulan dan tahun terpilih (Sesuai Excel: mendeteksi SEMUA gangguan Permanen & Temporer)
+$grid_where_clauses = [
+    "g.tglgangguan > '2000-01-01 00:00:00'",
+    "MONTH(g.tglgangguan) = $grid_bulan",
+    "YEAR(g.tglgangguan) = $grid_tahun"
+];
+
+if ($selected_unit !== 'ALL' && !empty($selected_unit) && $selected_unit !== '5125') {
+    $grid_where_clauses[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
 }
+
+$grid_where_sql = "WHERE " . implode(" AND ", $grid_where_clauses);
 
 $outage_days = [];
 $outage_details = [];
 $q_outages = mysql_query("
     SELECT g.unit, DAY(g.tglgangguan) as hari, g.kategorigangguan, COUNT(*) as jml
     FROM datagangguan g
-    $where_sql
+    $grid_where_sql
     GROUP BY g.unit, DAY(g.tglgangguan), g.kategorigangguan
 ");
 if ($q_outages) {
@@ -359,33 +390,33 @@ if ($q_outages) {
 $selected_month_name = ($selected_bulan !== 'ALL' && isset($month_names[$selected_bulan])) ? $month_names[$selected_bulan] : 'Semua Bulan';
 $selected_year_name = ($selected_tahun !== 'ALL') ? $selected_tahun : 'Semua Tahun';
 
-// 8. Recloser Trip Data - all from monitoring bulanan (v_datagangguan)
-$where_parts_rec = ["tglgangguan > '2000-01-01 00:00:00'"];
+// 8. Recloser Trip Data - queried directly from datagangguan table with joins (immune to view/definer issues)
+$where_parts_rec = ["g.tglgangguan > '2000-01-01 00:00:00'"];
 
 if ($selected_tahun !== 'ALL' && is_numeric($selected_tahun)) {
-    $where_parts_rec[] = "YEAR(tglgangguan) = " . (int)$selected_tahun;
+    $where_parts_rec[] = "YEAR(g.tglgangguan) = " . (int)$selected_tahun;
 }
 
 if ($selected_bulan !== 'ALL' && is_numeric($selected_bulan)) {
-    $where_parts_rec[] = "MONTH(tglgangguan) = " . (int)$selected_bulan;
+    $where_parts_rec[] = "MONTH(g.tglgangguan) = " . (int)$selected_bulan;
 }
 
 if ($selected_unit !== 'ALL' && !empty($selected_unit) && $selected_unit !== '5125') {
-    $where_parts_rec[] = "unit = '" . mysql_real_escape_string($selected_unit) . "'";
+    $where_parts_rec[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
 }
 
 $where_sql_rec = "WHERE " . implode(" AND ", $where_parts_rec);
 
 // Find latest date separately for Temporer & Permanen (for tambahan calculation)
 $latest_date_temp = null;
-$q_latest_temp = mysql_query("SELECT MAX(DATE(tglgangguan)) FROM v_datagangguan $where_sql_rec AND kategorigangguan = 'TEMPORER'");
+$q_latest_temp = mysql_query("SELECT MAX(DATE(g.tglgangguan)) FROM datagangguan g $where_sql_rec AND UPPER(TRIM(g.kategorigangguan)) = 'TEMPORER'");
 if ($q_latest_temp && mysql_num_rows($q_latest_temp) > 0) {
     $row_lt = mysql_fetch_array($q_latest_temp);
     $latest_date_temp = $row_lt[0];
 }
 
 $latest_date_perm = null;
-$q_latest_perm = mysql_query("SELECT MAX(DATE(tglgangguan)) FROM v_datagangguan $where_sql_rec AND kategorigangguan = 'PERMANEN'");
+$q_latest_perm = mysql_query("SELECT MAX(DATE(g.tglgangguan)) FROM datagangguan g $where_sql_rec AND UPPER(TRIM(g.kategorigangguan)) = 'PERMANEN'");
 if ($q_latest_perm && mysql_num_rows($q_latest_perm) > 0) {
     $row_lp = mysql_fetch_array($q_latest_perm);
     $latest_date_perm = $row_lp[0];
@@ -393,48 +424,52 @@ if ($q_latest_perm && mysql_num_rows($q_latest_perm) > 0) {
 
 // Build tambahan expressions safely based on each category's own latest date
 $tambahan_expr_temp = !empty($latest_date_temp)
-    ? "SUM(IF(DATE(tglgangguan) = '" . mysql_real_escape_string($latest_date_temp) . "', hitung, 0))"
+    ? "SUM(IF(DATE(g.tglgangguan) = '" . mysql_real_escape_string($latest_date_temp) . "', COALESCE(g.hitung, 1), 0))"
     : "0";
 
 $tambahan_expr_perm = !empty($latest_date_perm)
-    ? "SUM(IF(DATE(tglgangguan) = '" . mysql_real_escape_string($latest_date_perm) . "', hitung, 0))"
+    ? "SUM(IF(DATE(g.tglgangguan) = '" . mysql_real_escape_string($latest_date_perm) . "', COALESCE(g.hitung, 1), 0))"
     : "0";
 
-// Query Temporer recloser trips from monitoring bulanan
+// Query Temporer recloser trips
 $q_temp = mysql_query("
     SELECT 
-        IF(keterangan != '', keterangan, CONCAT('PMT ', uraianpenyul)) as recloser_name,
+        IF(COALESCE(d.keterangan, '') != '', d.keterangan, CONCAT('PMT ', COALESCE(c.uraianpenyul, g.penyulang))) as recloser_name,
         CASE 
-            WHEN unit = '51540' THEN 'PNG'
-            WHEN unit = '51541' THEN 'BLG'
-            WHEN unit = '51542' THEN 'PCT'
-            WHEN unit = '51543' THEN 'TGK'
+            WHEN g.unit = '51540' THEN 'PNG'
+            WHEN g.unit = '51541' THEN 'BLG'
+            WHEN g.unit = '51542' THEN 'PCT'
+            WHEN g.unit = '51543' THEN 'TGK'
             ELSE 'UP3'
         END as ulp,
-        SUM(hitung) as jumlah_trip,
+        SUM(COALESCE(g.hitung, 1)) as jumlah_trip,
         $tambahan_expr_temp as tambahan
-    FROM v_datagangguan
-    $where_sql_rec AND kategorigangguan = 'TEMPORER'
+    FROM datagangguan g
+    LEFT JOIN kodepenyulang c ON g.penyulang = c.kodepenyul
+    LEFT JOIN kodekeypoint d ON g.keypointid = d.idkeypoint
+    $where_sql_rec AND UPPER(TRIM(g.kategorigangguan)) = 'TEMPORER'
     GROUP BY recloser_name, ulp
     ORDER BY jumlah_trip DESC, tambahan DESC
     LIMIT 10
 ");
 
-// Query Permanen recloser trips from monitoring bulanan
+// Query Permanen recloser trips
 $q_perm = mysql_query("
     SELECT 
-        IF(keterangan != '', keterangan, CONCAT('PMT ', uraianpenyul)) as recloser_name,
+        IF(COALESCE(d.keterangan, '') != '', d.keterangan, CONCAT('PMT ', COALESCE(c.uraianpenyul, g.penyulang))) as recloser_name,
         CASE 
-            WHEN unit = '51540' THEN 'PNG'
-            WHEN unit = '51541' THEN 'BLG'
-            WHEN unit = '51542' THEN 'PCT'
-            WHEN unit = '51543' THEN 'TGK'
+            WHEN g.unit = '51540' THEN 'PNG'
+            WHEN g.unit = '51541' THEN 'BLG'
+            WHEN g.unit = '51542' THEN 'PCT'
+            WHEN g.unit = '51543' THEN 'TGK'
             ELSE 'UP3'
         END as ulp,
-        SUM(hitung) as jumlah_trip,
+        SUM(COALESCE(g.hitung, 1)) as jumlah_trip,
         $tambahan_expr_perm as tambahan
-    FROM v_datagangguan
-    $where_sql_rec AND kategorigangguan = 'PERMANEN'
+    FROM datagangguan g
+    LEFT JOIN kodepenyulang c ON g.penyulang = c.kodepenyul
+    LEFT JOIN kodekeypoint d ON g.keypointid = d.idkeypoint
+    $where_sql_rec AND UPPER(TRIM(g.kategorigangguan)) = 'PERMANEN'
     GROUP BY recloser_name, ulp
     ORDER BY jumlah_trip DESC, tambahan DESC
     LIMIT 10
@@ -604,7 +639,7 @@ $q_perm = mysql_query("
       <div class="card metric-card border-danger-custom">
         <div class="card-body">
           <div class="metric-value"><?php echo number_format($total_pmt); ?></div>
-          <div class="metric-title">Permanen (PMT)</div>
+          <div class="metric-title">Permanen</div>
           <i class="fa fa-toggle-off metric-icon text-danger"></i>
         </div>
       </div>
@@ -614,7 +649,7 @@ $q_perm = mysql_query("
       <div class="card metric-card border-success-custom">
         <div class="card-body">
           <div class="metric-value"><?php echo number_format($total_rec); ?></div>
-          <div class="metric-title">Temporer (REC/PMCB)</div>
+          <div class="metric-title">Temporer</div>
           <i class="fa fa-retweet metric-icon text-success"></i>
         </div>
       </div>
@@ -661,7 +696,7 @@ $q_perm = mysql_query("
         <div class="card-body d-flex flex-column justify-content-between">
           <div>
             <div class="chart-title">
-              <i class="fa fa-calendar-alt me-2"></i>Hari Tanpa Padam - <?php echo $selected_month_name . ' ' . $selected_year_name; ?>
+              <i class="fa fa-calendar-alt me-2"></i><?php echo $grid_title_text; ?>
             </div>
             <div class="table-responsive" style="margin-top: 25px;">
               <table class="table table-bordered text-center align-middle hari-tanpa-padam-table" style="font-size: 11px; margin-bottom: 0;">
@@ -674,7 +709,7 @@ $q_perm = mysql_query("
                   </tr>
                 </thead>
                 <tbody>
-                  <?php foreach (['PONOROGO', 'BALONG', 'PACITAN', 'TRENGGALEK'] as $ulp): ?>
+                  <?php foreach (['BALONG', 'PACITAN', 'PONOROGO', 'TRENGGALEK'] as $ulp): ?>
                     <tr>
                       <td class="fw-bold text-start" style="padding: 5px !important; font-size: 10px; height: 42px;"><?php echo $ulp; ?></td>
                       <?php for ($d = 1; $d <= $days_in_month; $d++): ?>
@@ -742,8 +777,10 @@ $q_perm = mysql_query("
           <div class="chart-title">
             <i class="fa fa-chart-bar me-2"></i>Trend Gangguan 3 Top Skor Temporer & Permanen - <?php echo $selected_month_name . ' ' . $selected_year_name; ?>
           </div>
-          <div class="chart-container" style="height: 350px;">
-            <canvas id="keypointChart"></canvas>
+          <div style="width: 100%; overflow-x: auto;">
+            <div class="chart-container" style="height: 420px; min-width: 1100px;">
+              <canvas id="keypointChart"></canvas>
+            </div>
           </div>
         </div>
       </div>
@@ -955,6 +992,8 @@ $q_perm = mysql_query("
   });
 
   // 4. Trend Gangguan 3 Top Skor Keypoint Chart (Grouped by ULP)
+  const ulpGroups = <?php echo json_encode($ulp_groups); ?>;
+
   // Custom plugin to show values on top of the bars
   const topValuesPlugin = {
     id: 'topValues',
@@ -979,6 +1018,87 @@ $q_perm = mysql_query("
     }
   };
 
+  // Custom plugin to render lower-tier ULP group labels with divider lines (matching Excel)
+  const ulpGroupPlugin = {
+    id: 'ulpGroups',
+    afterDraw(chart) {
+      const { ctx, chartArea, scales: { x } } = chart;
+      if (!ulpGroups || ulpGroups.length === 0) return;
+
+      ctx.save();
+      
+      const tierHeight = 28;
+      const tierBottom = x.bottom - 4;
+      const tierTop = tierBottom - tierHeight;
+      const textY = tierTop + (tierHeight / 2);
+
+      // Garis horizontal pembatas antara ticks dan grup ULP
+      ctx.strokeStyle = '#d0d4dc';
+      ctx.lineWidth = 1;
+      
+      ctx.beginPath();
+      ctx.moveTo(chartArea.left, tierTop);
+      ctx.lineTo(chartArea.right, tierTop);
+      ctx.stroke();
+
+      // Garis horizontal paling bawah grup ULP
+      ctx.beginPath();
+      ctx.moveTo(chartArea.left, tierBottom);
+      ctx.lineTo(chartArea.right, tierBottom);
+      ctx.stroke();
+
+      ctx.font = 'bold 11px "Segoe UI", sans-serif';
+      ctx.fillStyle = '#495057';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const tickCount = x.ticks.length;
+      const halfBarWidth = (tickCount > 1) 
+        ? (x.getPixelForTick(1) - x.getPixelForTick(0)) / 2 
+        : (chartArea.width / 2);
+
+      ulpGroups.forEach((grp, idx) => {
+        const startX = x.getPixelForTick(grp.startIndex) - halfBarWidth;
+        const endX = x.getPixelForTick(grp.endIndex) + halfBarWidth;
+        const centerX = (startX + endX) / 2;
+
+        // Render teks nama ULP di tengah area kelompoknya
+        ctx.fillText(grp.name, centerX, textY);
+
+        // Garis vertikal pemisah di sisi kanan grup (jika bukan yang terakhir)
+        if (idx < ulpGroups.length - 1) {
+          // Garis putus-putus lembut memanjang ke atas grafik
+          ctx.beginPath();
+          ctx.moveTo(endX, chartArea.top);
+          ctx.lineTo(endX, tierBottom);
+          ctx.strokeStyle = '#e2e6ea';
+          ctx.setLineDash([3, 3]);
+          ctx.stroke();
+
+          // Garis solid pembatas di kotak tier ULP
+          ctx.beginPath();
+          ctx.moveTo(endX, tierTop);
+          ctx.lineTo(endX, tierBottom);
+          ctx.strokeStyle = '#adb5bd';
+          ctx.setLineDash([]);
+          ctx.stroke();
+        }
+      });
+
+      // Garis vertikal di ujung paling kiri dan kanan
+      ctx.beginPath();
+      ctx.moveTo(chartArea.left, tierTop);
+      ctx.lineTo(chartArea.left, tierBottom);
+      ctx.moveTo(chartArea.right, tierTop);
+      ctx.lineTo(chartArea.right, tierBottom);
+      ctx.strokeStyle = '#adb5bd';
+      ctx.setLineDash([]);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+  };
+
   const ctxKeypoint = document.getElementById('keypointChart').getContext('2d');
   new Chart(ctxKeypoint, {
     type: 'bar',
@@ -986,31 +1106,31 @@ $q_perm = mysql_query("
       labels: <?php echo json_encode($keypoint_labels); ?>,
       datasets: [
         {
-          label: 'Temporer',
-          data: <?php echo json_encode($keypoint_rec); ?>,
-          backgroundColor: '#3a75c4', // Slate Blue
+          label: 'Permanen',
+          data: <?php echo json_encode($keypoint_pmt); ?>,
+          backgroundColor: '#4472c4', // Excel Royal Blue
           borderRadius: 2,
           barPercentage: 0.8,
           categoryPercentage: 0.7
         },
         {
-          label: 'Permanen',
-          data: <?php echo json_encode($keypoint_pmt); ?>,
-          backgroundColor: '#f28e2b', // Orange
+          label: 'Temporer',
+          data: <?php echo json_encode($keypoint_rec); ?>,
+          backgroundColor: '#ed7d31', // Excel Warm Orange
           borderRadius: 2,
           barPercentage: 0.8,
           categoryPercentage: 0.7
         }
       ]
     },
-    plugins: [topValuesPlugin],
+    plugins: [topValuesPlugin, ulpGroupPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: {
           position: 'bottom',
-          labels: { boxWidth: 12, font: { size: 11 } }
+          labels: { boxWidth: 12, font: { size: 11 }, padding: 15 }
         }
       },
       scales: {
@@ -1020,10 +1140,17 @@ $q_perm = mysql_query("
         },
         x: {
           ticks: {
-            font: { size: 10 },
+            font: { size: 10, weight: '500' },
+            color: '#333',
             maxRotation: 90,
             minRotation: 90,
             autoSkip: false
+          },
+          grid: {
+            display: false
+          },
+          afterFit: (scale) => {
+            scale.height += 35; // Memberikan ruang di bawah rotated ticks untuk tier nama ULP
           }
         }
       }

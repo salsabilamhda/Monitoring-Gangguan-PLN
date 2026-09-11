@@ -50,6 +50,11 @@ if (!function_exists('mysql_connect')) {
         return mysqli_fetch_assoc($result);
     }
 
+    function mysql_fetch_row($result) {
+        if (!$result || !($result instanceof mysqli_result)) return false;
+        return mysqli_fetch_row($result);
+    }
+
     function mysql_fetch_object($result, $class_name = null, array $params = null) {
         if (!$result || !($result instanceof mysqli_result)) return false;
         if ($class_name) {

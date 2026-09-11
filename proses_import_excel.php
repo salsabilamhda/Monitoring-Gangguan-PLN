@@ -428,6 +428,9 @@ foreach ($data as $index => $row) {
     $raw_keypoint = isset($row['Keypoint ID']) ? strtoupper(trim($row['Keypoint ID'])) : '';
     $keypointid = '';
     if (!empty($raw_keypoint)) {
+        $raw_kp_nospace = str_replace([' ', '-', '_'], '', $raw_keypoint);
+        
+        // 1. Exact match (full, ID, or clean name)
         if (isset($keypoints[$raw_keypoint])) {
             $keypointid = $keypoints[$raw_keypoint];
         } elseif (isset($keypoints['REC ' . $raw_keypoint])) {
@@ -437,17 +440,46 @@ foreach ($data as $index => $row) {
         } elseif (isset($keypoints['LBS ' . $raw_keypoint])) {
             $keypointid = $keypoints['LBS ' . $raw_keypoint];
         } else {
+            // 2. Exact match tanpa spasi pada penyulang yang sama (prioritas tertinggi)
             foreach ($keypoint_details as $kd) {
                 if (!empty($penyulang_code) && $kd['penyul'] === $penyulang_code) {
-                    if (strpos($kd['clean'], $raw_keypoint) !== false || strpos($raw_keypoint, $kd['clean']) !== false) {
+                    $kd_nospace = str_replace([' ', '-', '_'], '', $kd['clean']);
+                    if ($kd_nospace === $raw_kp_nospace) {
                         $keypointid = $kd['id'];
                         break;
                     }
                 }
             }
+            
+            // 3. Partial match pada penyulang yang sama
             if (empty($keypointid)) {
                 foreach ($keypoint_details as $kd) {
-                    if (strpos($kd['clean'], $raw_keypoint) !== false || strpos($raw_keypoint, $kd['clean']) !== false) {
+                    if (!empty($penyulang_code) && $kd['penyul'] === $penyulang_code) {
+                        $kd_nospace = str_replace([' ', '-', '_'], '', $kd['clean']);
+                        if (strpos($kd_nospace, $raw_kp_nospace) !== false || strpos($raw_kp_nospace, $kd_nospace) !== false) {
+                            $keypointid = $kd['id'];
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // 4. Exact match tanpa spasi di seluruh penyulang
+            if (empty($keypointid)) {
+                foreach ($keypoint_details as $kd) {
+                    $kd_nospace = str_replace([' ', '-', '_'], '', $kd['clean']);
+                    if ($kd_nospace === $raw_kp_nospace) {
+                        $keypointid = $kd['id'];
+                        break;
+                    }
+                }
+            }
+            
+            // 5. Partial match fallback di seluruh penyulang
+            if (empty($keypointid)) {
+                foreach ($keypoint_details as $kd) {
+                    $kd_nospace = str_replace([' ', '-', '_'], '', $kd['clean']);
+                    if (strpos($kd_nospace, $raw_kp_nospace) !== false || strpos($raw_kp_nospace, $kd_nospace) !== false) {
                         $keypointid = $kd['id'];
                         break;
                     }

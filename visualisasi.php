@@ -335,20 +335,31 @@ foreach ($ulp_keypoint_data as $ulp_name => $kp_list) {
 }
 
 // 5. Data Hari Tanpa Padam (Calendar Grid)
-// Tentukan bulan dan tahun kalender secara akurat (tidak menggabungkan lintas tahun)
-$grid_bulan = ($selected_bulan !== 'ALL' && is_numeric($selected_bulan)) ? (int)$selected_bulan : (int)date('m');
-$grid_tahun = ($selected_tahun !== 'ALL' && is_numeric($selected_tahun)) ? (int)$selected_tahun : (!empty($years[0]) ? (int)$years[0] : (int)date('Y'));
-$grid_month_name = isset($month_names[$grid_bulan]) ? $month_names[$grid_bulan] : 'Bulan ' . $grid_bulan;
-$grid_title_text = "Hari Tanpa Padam - " . $grid_month_name . " " . $grid_tahun;
+// Opsi Akumulasi: Jika bulan dipilih spesifik, tampilkan bulan tersebut. Jika "Semua Bulan", akumulasikan seluruh bulan.
+$is_all_months = ($selected_bulan === 'ALL' || empty($selected_bulan) || !is_numeric($selected_bulan));
+$is_all_years = ($selected_tahun === 'ALL' || empty($selected_tahun) || !is_numeric($selected_tahun));
 
-$days_in_month = cal_days_in_month(CAL_GREGORIAN, $grid_bulan, $grid_tahun);
+if (!$is_all_months) {
+    $grid_bulan = (int)$selected_bulan;
+    $ref_tahun = !$is_all_years ? (int)$selected_tahun : (!empty($years[0]) ? (int)$years[0] : (int)date('Y'));
+    $days_in_month = cal_days_in_month(CAL_GREGORIAN, $grid_bulan, $ref_tahun);
+    $grid_month_name = isset($month_names[$grid_bulan]) ? $month_names[$grid_bulan] : 'Bulan ' . $grid_bulan;
+    $grid_title_text = "Hari Tanpa Padam - " . $grid_month_name . " " . (!$is_all_years ? $selected_tahun : $ref_tahun);
+} else {
+    $days_in_month = 31; // Representasi tanggal 1 s/d 31 sepanjang tahun
+    $grid_title_text = "Hari Tanpa Padam - Akumulasi " . (!$is_all_years ? ("Tahun " . $selected_tahun) : "Semua Tahun");
+}
 
-// Filter kalender khusus untuk bulan dan tahun terpilih (Sesuai Excel: mendeteksi SEMUA gangguan Permanen & Temporer)
-$grid_where_clauses = [
-    "g.tglgangguan > '2000-01-01 00:00:00'",
-    "MONTH(g.tglgangguan) = $grid_bulan",
-    "YEAR(g.tglgangguan) = $grid_tahun"
-];
+// Filter kalender: mendeteksi SEMUA gangguan Permanen & Temporer
+$grid_where_clauses = ["g.tglgangguan > '2000-01-01 00:00:00'"];
+
+if (!$is_all_years) {
+    $grid_where_clauses[] = "YEAR(g.tglgangguan) = " . (int)$selected_tahun;
+}
+
+if (!$is_all_months) {
+    $grid_where_clauses[] = "MONTH(g.tglgangguan) = " . (int)$selected_bulan;
+}
 
 if ($selected_unit !== 'ALL' && !empty($selected_unit) && $selected_unit !== '5125') {
     $grid_where_clauses[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";

@@ -429,76 +429,85 @@ foreach ($data as $index => $row) {
     $keypointid = '';
     if (!empty($raw_keypoint)) {
         $raw_kp_nospace = str_replace([' ', '-', '_'], '', $raw_keypoint);
-        
-        // 1. Exact match (full, ID, or clean name)
-        if (isset($keypoints[$raw_keypoint])) {
-            $keypointid = $keypoints[$raw_keypoint];
-        } elseif (isset($keypoints['REC ' . $raw_keypoint])) {
-            $keypointid = $keypoints['REC ' . $raw_keypoint];
-        } elseif (isset($keypoints['PMCB ' . $raw_keypoint])) {
-            $keypointid = $keypoints['PMCB ' . $raw_keypoint];
-        } elseif (isset($keypoints['LBS ' . $raw_keypoint])) {
-            $keypointid = $keypoints['LBS ' . $raw_keypoint];
-        } else {
-            // 2. Exact match tanpa spasi pada penyulang yang sama (prioritas tertinggi)
+        $raw_kp_clean = strtoupper(trim(preg_replace('/^(REC\b\.?|CO\b\.?|PMCB\b\.?|LBSM?\b\.?|FCO\b\.?|PTCT\b\.?|DS\b\.?)\s*/i', '', $raw_keypoint)));
+        $raw_kp_clean_nospace = str_replace([' ', '-', '_'], '', $raw_kp_clean);
+
+        // 1. PRIORITAS UTAMA: Cari pada PENYULANG YANG SAMA (menghindari salah sambung antar-wilayah)
+        if (!empty($penyulang_code)) {
+            // 1a. Exact match pada penyulang yang sama
             foreach ($keypoint_details as $kd) {
-                if (!empty($penyulang_code) && $kd['penyul'] === $penyulang_code) {
-                    $kd_nospace = str_replace([' ', '-', '_'], '', $kd['clean']);
-                    if ($kd_nospace === $raw_kp_nospace) {
+                if ($kd['penyul'] === $penyulang_code) {
+                    if ($kd['full'] === $raw_keypoint || $kd['clean'] === $raw_keypoint || $kd['clean'] === $raw_kp_clean) {
                         $keypointid = $kd['id'];
                         break;
                     }
                 }
             }
-            
-            // 3. Partial match pada penyulang yang sama
+
+            // 1b. Exact match tanpa spasi pada penyulang yang sama
             if (empty($keypointid)) {
                 foreach ($keypoint_details as $kd) {
-                    if (!empty($penyulang_code) && $kd['penyul'] === $penyulang_code) {
-                        $kd_nospace = str_replace([' ', '-', '_'], '', $kd['clean']);
-                        if (strpos($kd_nospace, $raw_kp_nospace) !== false || strpos($raw_kp_nospace, $kd_nospace) !== false) {
+                    if ($kd['penyul'] === $penyulang_code) {
+                        $kd_full_nospace = str_replace([' ', '-', '_'], '', $kd['full']);
+                        $kd_clean_nospace = str_replace([' ', '-', '_'], '', $kd['clean']);
+                        if ($kd_clean_nospace === $raw_kp_clean_nospace || $kd_clean_nospace === $raw_kp_nospace || $kd_full_nospace === $raw_kp_nospace) {
                             $keypointid = $kd['id'];
                             break;
                         }
                     }
                 }
             }
-            
-            // 4. Exact match tanpa spasi di seluruh penyulang
-            if (empty($keypointid)) {
+
+            // 1c. Substring match pada penyulang yang sama (hanya jika panjang nama >= 4 karakter)
+            if (empty($keypointid) && strlen($raw_kp_clean_nospace) >= 4) {
                 foreach ($keypoint_details as $kd) {
-                    $kd_nospace = str_replace([' ', '-', '_'], '', $kd['clean']);
-                    if ($kd_nospace === $raw_kp_nospace) {
-                        $keypointid = $kd['id'];
-                        break;
-                    }
-                }
-            }
-            
-            // 5. Partial match fallback di seluruh penyulang
-            if (empty($keypointid)) {
-                foreach ($keypoint_details as $kd) {
-                    $kd_nospace = str_replace([' ', '-', '_'], '', $kd['clean']);
-                    if (strpos($kd_nospace, $raw_kp_nospace) !== false || strpos($raw_kp_nospace, $kd_nospace) !== false) {
-                        $keypointid = $kd['id'];
-                        break;
+                    if ($kd['penyul'] === $penyulang_code) {
+                        $kd_clean_nospace = str_replace([' ', '-', '_'], '', $kd['clean']);
+                        if (strlen($kd_clean_nospace) >= 4) {
+                            if (strpos($kd_clean_nospace, $raw_kp_clean_nospace) !== false || strpos($raw_kp_clean_nospace, $kd_clean_nospace) !== false) {
+                                $keypointid = $kd['id'];
+                                break;
+                            }
+                        }
                     }
                 }
             }
         }
-        
-        // Auto-create keypoint jika belum ada di database
+
+        // 2. Direct ID check jika Excel berisi angka ID langsung
+        if (empty($keypointid) && is_numeric($raw_keypoint) && isset($keypoints[(string)$raw_keypoint])) {
+            $keypointid = (int)$raw_keypoint;
+        }
+
+        // 3. AUTO-CREATE KEYPOINT JIKA BELUM ADA (Otomatis didaftarkan ke Penyulang & Unit yang sesuai di Excel)
         if (empty($keypointid) && !empty($penyulang_code)) {
-            $auto_ket = "REC " . $raw_keypoint;
-            $auto_unit = !empty($unit) ? $unit : "51540";
+            $detected_jenis = 'REC';
+            if (preg_match('/^(PMCB|LBSM?|CO|FCO|PTCT)\b/i', $raw_keypoint, $mj)) {
+                $detected_jenis = strtoupper($mj[1]);
+            }
+            $auto_ket = (strpos($raw_keypoint, $detected_jenis) === false) ? "$detected_jenis " . $raw_keypoint : $raw_keypoint;
+            $auto_unit = !empty($unit) ? $unit : (!empty($penyulang_to_unit[$penyulang_code]) ? $penyulang_to_unit[$penyulang_code] : "51540");
+            
             $escaped_ket = mysql_real_escape_string($auto_ket);
             $escaped_penyul = mysql_real_escape_string($penyulang_code);
             $escaped_unit = mysql_real_escape_string($auto_unit);
+            $escaped_jenis = mysql_real_escape_string($detected_jenis);
+
             $insert_kp = mysql_query("INSERT INTO kodekeypoint (kodepenyul, jenis, keterangan, unit, zona, latitud, longitud, id_keypint) 
-                                      VALUES ('$escaped_penyul', 'REC', '$escaped_ket', '$escaped_unit', '1', '0', '0', 0)");
+                                      VALUES ('$escaped_penyul', '$escaped_jenis', '$escaped_ket', '$escaped_unit', '1', '0', '0', 0)");
             if ($insert_kp) {
                 $new_id = mysql_insert_id();
                 $keypointid = $new_id;
+                
+                // Daftarkan ke cache memori agar baris berikutnya di Excel ini langsung mengenalnya
+                $clean_new = strtoupper(trim(preg_replace('/^(REC\b\.?|CO\b\.?|PMCB\b\.?|LBSM?\b\.?|FCO\b\.?|PTCT\b\.?|DS\b\.?)\s*/i', '', $auto_ket)));
+                $keypoint_details[] = [
+                    'id' => $new_id,
+                    'full' => $auto_ket,
+                    'clean' => $clean_new,
+                    'penyul' => $penyulang_code,
+                    'unit' => $auto_unit
+                ];
                 $keypoints[$raw_keypoint] = $new_id;
                 $keypoints[$auto_ket] = $new_id;
             }

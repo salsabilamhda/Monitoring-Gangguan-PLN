@@ -117,29 +117,62 @@ $top_weather = isset($r_top_weather['uraiancuaca']) ? $r_top_weather['uraiancuac
 
 // 2. Data Top ULP Gangguan Permanen & Temporer
 $ulp_stats = [];
+$ulp_labels = [];
+$ulp_permanen = [];
+$ulp_temporer = [];
+
 $q_ulp_stats = mysql_query("
-    SELECT u.uraian, g.unit,
-           SUM(CASE WHEN g.kategorigangguan = 'PERMANEN' THEN 1 ELSE 0 END) as permanen,
-           SUM(CASE WHEN g.kategorigangguan = 'TEMPORER' THEN 1 ELSE 0 END) as temporer
+    SELECT COALESCE(u.uraian, g.unit) as uraian, g.unit,
+           SUM(CASE WHEN UPPER(TRIM(g.kategorigangguan)) = 'PERMANEN' THEN 1 ELSE 0 END) as permanen,
+           SUM(CASE WHEN UPPER(TRIM(g.kategorigangguan)) = 'TEMPORER' THEN 1 ELSE 0 END) as temporer,
+           COUNT(*) as total_all
     FROM datagangguan g
-    JOIN kodeunit u ON g.unit = u.kodeunit
+    LEFT JOIN kodeunit u ON TRIM(g.unit) = TRIM(u.kodeunit)
     $where_sql
     GROUP BY g.unit, u.uraian
-    ORDER BY (permanen + temporer) DESC
+    ORDER BY total_all DESC
 ");
-while ($row = mysql_fetch_assoc($q_ulp_stats)) {
-    $name = $row['uraian'];
-    if (strpos(strtoupper($name), 'TRENGGALEK') !== false) $short = 'TGK';
-    elseif (strpos(strtoupper($name), 'PONOROGO') !== false && strpos(strtoupper($name), 'ULP') !== false) $short = 'PNG';
-    elseif (strpos(strtoupper($name), 'PACITAN') !== false) $short = 'PCT';
-    elseif (strpos(strtoupper($name), 'BALONG') !== false) $short = 'BLG';
-    else $short = $name;
 
-    $ulp_stats[] = [
-        'label' => $short,
-        'permanen' => (int)$row['permanen'],
-        'temporer' => (int)$row['temporer']
-    ];
+if ($q_ulp_stats) {
+    while ($row = mysql_fetch_assoc($q_ulp_stats)) {
+        $unit_val = trim($row['unit']);
+        if ($unit_val === '' || $unit_val === null) continue;
+
+        $name = !empty($row['uraian']) ? $row['uraian'] : $unit_val;
+        $upper = strtoupper($name);
+        if (strpos($upper, 'TRENGGALEK') !== false || $unit_val === '51543') $short = 'TGK';
+        elseif ((strpos($upper, 'PONOROGO') !== false && strpos($upper, 'ULP') !== false) || $unit_val === '51540') $short = 'PNG';
+        elseif (strpos($upper, 'PACITAN') !== false || $unit_val === '51542') $short = 'PCT';
+        elseif (strpos($upper, 'BALONG') !== false || $unit_val === '51541') $short = 'BLG';
+        else $short = $name;
+
+        $p = (int)$row['permanen'];
+        $t = (int)$row['temporer'];
+
+        $ulp_stats[] = [
+            'label' => $short,
+            'permanen' => $p,
+            'temporer' => $t
+        ];
+        $ulp_labels[] = $short;
+        $ulp_permanen[] = $p;
+        $ulp_temporer[] = $t;
+    }
+}
+
+// Fallback jika belum ada data agar chart tetap menampilkan kerangka ULP
+if (empty($ulp_labels)) {
+    $default_ulps = ['PCT', 'TGK', 'PNG', 'BLG'];
+    foreach ($default_ulps as $df) {
+        $ulp_labels[] = $df;
+        $ulp_permanen[] = 0;
+        $ulp_temporer[] = 0;
+        $ulp_stats[] = [
+            'label' => $df,
+            'permanen' => 0,
+            'temporer' => 0
+        ];
+    }
 }
 
 // 3. Data Gangguan Permanen & Temporer per ULP Bulanan
@@ -156,11 +189,11 @@ $monthly_data_rec = [];
 $available_months = [];
 
 $q_monthly_ulp = mysql_query("
-    SELECT u.uraian, MONTH(g.tglgangguan) as bulan,
-           SUM(CASE WHEN g.kategorigangguan = 'PERMANEN' THEN 1 ELSE 0 END) as permanen,
-           SUM(CASE WHEN g.kategorigangguan = 'TEMPORER' THEN 1 ELSE 0 END) as temporer
+    SELECT COALESCE(u.uraian, g.unit) as uraian, MONTH(g.tglgangguan) as bulan,
+           SUM(CASE WHEN UPPER(TRIM(g.kategorigangguan)) = 'PERMANEN' THEN 1 ELSE 0 END) as permanen,
+           SUM(CASE WHEN UPPER(TRIM(g.kategorigangguan)) = 'TEMPORER' THEN 1 ELSE 0 END) as temporer
     FROM datagangguan g
-    JOIN kodeunit u ON g.unit = u.kodeunit
+    LEFT JOIN kodeunit u ON TRIM(g.unit) = TRIM(u.kodeunit)
     $where_sql_no_month
     GROUP BY g.unit, u.uraian, MONTH(g.tglgangguan)
 ");
@@ -814,17 +847,17 @@ $q_perm = mysql_query("
   new Chart(ctxUlpStacked, {
     type: 'bar',
     data: {
-      labels: <?php echo json_encode(array_column($ulp_stats, 'label')); ?>,
+      labels: <?php echo json_encode(!empty($ulp_labels) ? $ulp_labels : array_column($ulp_stats, 'label')); ?>,
       datasets: [
         {
           label: 'Temporer',
-          data: <?php echo json_encode(array_column($ulp_stats, 'temporer')); ?>,
+          data: <?php echo json_encode(!empty($ulp_temporer) ? $ulp_temporer : array_column($ulp_stats, 'temporer')); ?>,
           backgroundColor: primaryColor,
           borderRadius: 4
         },
         {
           label: 'Permanen',
-          data: <?php echo json_encode(array_column($ulp_stats, 'permanen')); ?>,
+          data: <?php echo json_encode(!empty($ulp_permanen) ? $ulp_permanen : array_column($ulp_stats, 'permanen')); ?>,
           backgroundColor: orangeColor,
           borderRadius: 4
         }

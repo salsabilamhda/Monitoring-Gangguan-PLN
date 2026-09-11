@@ -348,23 +348,21 @@ if ($q_outages) {
     }
 }
 
-$selected_month_name = ($selected_bulan !== 'ALL' && isset($month_names[$selected_bulan])) ? $month_names[$selected_bulan] : 'Bulan Ini';
-$selected_year_name = ($selected_tahun !== 'ALL') ? $selected_tahun : date('Y');
+$selected_month_name = ($selected_bulan !== 'ALL' && isset($month_names[$selected_bulan])) ? $month_names[$selected_bulan] : 'Semua Bulan';
+$selected_year_name = ($selected_tahun !== 'ALL') ? $selected_tahun : 'Semua Tahun';
 
 // 8. Recloser Trip Data - all from monitoring bulanan (v_datagangguan)
-$where_parts_rec = [];
+$where_parts_rec = ["tglgangguan > '2000-01-01 00:00:00'"];
 
 if ($selected_tahun !== 'ALL' && is_numeric($selected_tahun)) {
     $where_parts_rec[] = "YEAR(tglgangguan) = " . (int)$selected_tahun;
-} else {
-    $where_parts_rec[] = "YEAR(tglgangguan) = " . (int)date('Y');
 }
 
 if ($selected_bulan !== 'ALL' && is_numeric($selected_bulan)) {
     $where_parts_rec[] = "MONTH(tglgangguan) = " . (int)$selected_bulan;
 }
 
-if ($selected_unit !== 'ALL') {
+if ($selected_unit !== 'ALL' && !empty($selected_unit) && $selected_unit !== '5125') {
     $where_parts_rec[] = "unit = '" . mysql_real_escape_string($selected_unit) . "'";
 }
 

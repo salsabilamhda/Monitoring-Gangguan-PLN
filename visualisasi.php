@@ -580,19 +580,119 @@ $q_perm = mysql_query("
       padding-bottom: 10px;
       margin-bottom: 15px;
     }
+    /* Print & PDF Export 1-Page A4 Portrait */
+    @page {
+      size: A4 portrait;
+      margin: 6mm;
+    }
+    @media print {
+      html, body {
+        height: 100% !important;
+        overflow: hidden !important;
+        background-color: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .no-print, .filter-card, .btn {
+        display: none !important;
+      }
+      #content-wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .page-title {
+        font-size: 15px !important;
+        margin-bottom: 2px !important;
+      }
+      .card {
+        box-shadow: none !important;
+        border: 1px solid #dee2e6 !important;
+        margin-bottom: 5px !important;
+        border-radius: 4px !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      .card-body {
+        padding: 4px 6px !important;
+      }
+      .chart-title {
+        font-size: 10px !important;
+        padding-bottom: 2px !important;
+        margin-bottom: 3px !important;
+      }
+      .metric-value {
+        font-size: 15px !important;
+        margin-bottom: 0 !important;
+      }
+      .metric-title {
+        font-size: 8px !important;
+      }
+      .metric-icon {
+        font-size: 16px !important;
+        right: 6px !important;
+        bottom: 4px !important;
+      }
+      .chart-container {
+        height: 120px !important;
+      }
+      .chart-container[style*="min-width"] {
+        min-width: 100% !important;
+        height: 145px !important;
+      }
+      div[style*="overflow-x: auto"] {
+        overflow: visible !important;
+      }
+      .table {
+        font-size: 8px !important;
+        margin-bottom: 0 !important;
+      }
+      .table th, .table td {
+        padding: 1px 3px !important;
+        height: auto !important;
+      }
+      .hari-tanpa-padam-table td {
+        height: 14px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .hari-tanpa-padam-table th {
+        padding: 1px !important;
+        font-size: 8px !important;
+      }
+      .row {
+        --bs-gutter-x: 6px;
+        --bs-gutter-y: 5px;
+      }
+    }
+
   </style>
 
-  <!-- JS Chart.js CDN -->
+  <!-- JS Chart.js, html2canvas & jsPDF CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
 <div id="content-wrapper">
   
   <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="page-title"><i class="fa fa-chart-line me-2"></i>Visualisasi Data Gangguan</h3>
-    <span class="text-secondary small fw-bold">PLN UP3 Ponorogo</span>
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h3 class="page-title mb-1"><i class="fa fa-chart-line me-2"></i>Visualisasi Data Gangguan</h3>
+      <span class="text-secondary small fw-bold">
+        PLN UP3 Ponorogo &bull; Periode: <span class="badge bg-primary text-white"><?php echo $selected_month_name . ' ' . $selected_year_name; ?></span>
+      </span>
+    </div>
+    <div class="no-print">
+      <button type="button" class="btn btn-danger btn-sm shadow-sm d-flex align-items-center gap-1" id="btnExportPdf" onclick="exportToPdf()">
+        <i class="fa fa-file-pdf"></i> <span>Export PDF</span>
+      </button>
+    </div>
   </div>
 
   <!-- Filter Bar -->
@@ -1167,6 +1267,78 @@ $q_perm = mysql_query("
       }
     }
   });
+
+  // Fungsi Export PDF menjadi tepat 1 Halaman Kertas A4 Landscape
+  async function exportToPdf() {
+    const btn = document.getElementById('btnExportPdf');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <span>Menyiapkan 1 Halaman A4...</span>';
+    btn.disabled = true;
+
+    // Sembunyikan tombol & filter agar hasil bersih
+    const noPrintElements = document.querySelectorAll('.no-print, .filter-card');
+    noPrintElements.forEach(el => el.style.display = 'none');
+
+    const wrapper = document.getElementById('content-wrapper');
+
+    try {
+      // Tangkap seluruh visualisasi dashboard secara utuh tanpa distorsi
+      const canvas = await html2canvas(wrapper, {
+        scale: 2, // Resolusi jernih tajam
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        scrollX: 0,
+        scrollY: 0
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+
+      // Inisialisasi dokumen jsPDF format A4 Portrait (210 x 297 mm)
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 6; // margin 6mm di tepi kertas
+      const maxWidth = pageWidth - (margin * 2);   // 198mm
+      const maxHeight = pageHeight - (margin * 2);  // 285mm
+
+      // Hitung skala proporsional agar memenuhi 1 lembar A4 Portrait
+      const canvasRatio = canvas.width / canvas.height;
+      const pageRatio = maxWidth / maxHeight;
+
+      let finalWidth, finalHeight;
+      if (canvasRatio > pageRatio) {
+        finalWidth = maxWidth;
+        finalHeight = finalWidth / canvasRatio;
+      } else {
+        finalHeight = maxHeight;
+        finalWidth = finalHeight * canvasRatio;
+      }
+
+      // Posisikan tepat di tengah lembar A4 Portrait
+      const x = margin + (maxWidth - finalWidth) / 2;
+      const y = margin + (maxHeight - finalHeight) / 2;
+
+      // Masukkan gambar ke halaman tunggal (Page 1)
+      pdf.addImage(imgData, 'JPEG', x, y, finalWidth, finalHeight);
+
+      const fileName = 'Visualisasi_Gangguan_PLN_<?php echo preg_replace('/[^a-zA-Z0-9_-]/', '_', $selected_month_name . '_' . $selected_year_name); ?>.pdf';
+      pdf.save(fileName);
+    } catch (err) {
+      console.error('PDF export error:', err);
+      alert('Gagal mengekspor PDF. Silakan coba lagi.');
+    } finally {
+      noPrintElements.forEach(el => el.style.display = '');
+      btn.innerHTML = originalHtml;
+      btn.disabled = false;
+    }
+  }
 </script>
 </body>
 </html>

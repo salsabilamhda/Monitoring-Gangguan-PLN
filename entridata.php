@@ -426,12 +426,12 @@ $('#date-format2').bootstrapMaterialDatePicker({
             reader.onload = function(evt) {
                 try {
                     const data = new Uint8Array(evt.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd hh:mm:ss' });
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     
                     // Get JSON format
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "", raw: false });
                     if (jsonData.length === 0) {
                         Swal.fire({
                             icon: 'warning',
@@ -529,13 +529,22 @@ $('#date-format2').bootstrapMaterialDatePicker({
                 btn.innerHTML = 'Proses Import';
                 
                 if (res.success) {
-                    let msg = `Berhasil mengimpor ${res.inserted} data.`;
+                    let msg = '';
+                    if (res.inserted > 0) {
+                        msg += `Berhasil mengimpor <strong>${res.inserted}</strong> data baru.`;
+                    }
+                    if (res.updated > 0) {
+                        msg += (msg ? '<br>' : '') + `Berhasil memperbarui / menimpa <strong>${res.updated}</strong> data duplikat dengan data terbaru.`;
+                    }
+                    if (res.skipped && res.skipped > 0) {
+                        msg += (msg ? '<br>' : '') + `<span class="text-muted">${res.skipped} data dilewati.</span>`;
+                    }
                     if (res.errors && res.errors.length > 0) {
-                        msg += `<br><br><strong>Detail Kesalahan:</strong><br>` + res.errors.join('<br>');
+                        msg += `<br><br><strong>Catatan Tambahan:</strong><br>` + res.errors.join('<br>');
                     }
                     Swal.fire({
                         icon: res.errors && res.errors.length > 0 ? 'warning' : 'success',
-                        title: res.errors && res.errors.length > 0 ? 'Selesai dengan Kesalahan' : 'Sukses',
+                        title: (res.inserted > 0 || res.updated > 0) ? 'Sukses' : 'Data Selesai Diproses',
                         html: msg,
                         confirmButtonColor: '#242c6d'
                     }).then(() => {

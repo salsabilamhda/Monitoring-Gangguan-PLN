@@ -60,6 +60,57 @@ function saveBase64Image($base64Data, $prefix, $uploadDir = 'uploads/') {
     return '';
 }
 
+/**
+ * Konversi tanggal Excel (angka serial 46030 atau string campuran seperti "4/14/2026 REC")
+ * Menjadi format MySQL standar 'YYYY-MM-DD HH:MM:SS'
+ */
+function parseCustomDateTime($raw, &$extracted_tag = '') {
+    $extracted_tag = '';
+    if ($raw === null || $raw === '') return '';
+    
+    $raw = trim((string)$raw);
+    if ($raw === '') return '';
+    
+    // Deteksi jika tanggal diikuti kode seperti "4/14/2026 REC", "4/21/2026 PMT", "4/14/2026 EF", "4/15/2026 OCR"
+    if (preg_match('/^(.*?)\s+([A-Za-z0-9\-\*]+)$/', $raw, $m)) {
+        $possible_tag = strtoupper(trim($m[2]));
+        if (in_array($possible_tag, ['REC', 'PMT', 'EF', 'OCR', 'DGR', 'OCR-INSTANT', 'UFR', 'DIFF', 'DOCR', 'OVR', 'UVR'])) {
+            $raw = trim($m[1]);
+            $extracted_tag = $possible_tag;
+        }
+    }
+    
+    // 1. Jika berupa angka serial Excel (misal 46030, 46133, 46040.5)
+    if (is_numeric($raw) && (float)$raw > 1000) {
+        $val = (float)$raw;
+        $unixTimestamp = ($val - 25569) * 86400;
+        return gmdate("Y-m-d H:i:s", (int)round($unixTimestamp));
+    }
+    
+    // 2. Format standar melalui strtotime
+    $ts = @strtotime($raw);
+    if ($ts !== false && $ts > 0) {
+        if (strpos($raw, ':') === false) {
+            return date("Y-m-d 00:00:00", $ts);
+        }
+        return date("Y-m-d H:i:s", $ts);
+    }
+    
+    // 3. Coba parsing d/m/Y atau d-m-Y jika strtotime gagal
+    $formats = ['d/m/Y H:i:s', 'd/m/Y H:i', 'd/m/Y', 'd-m-Y H:i:s', 'd-m-Y H:i', 'd-m-Y'];
+    foreach ($formats as $fmt) {
+        $dt = DateTime::createFromFormat($fmt, $raw);
+        if ($dt !== false) {
+            if (strpos($fmt, 'H') === false) {
+                return $dt->format('Y-m-d 00:00:00');
+            }
+            return $dt->format('Y-m-d H:i:s');
+        }
+    }
+    
+    return $raw;
+}
+
 header('Content-Type: application/json');
 
 // Get JSON input
@@ -84,21 +135,114 @@ if ($q) {
 
 // Penyulang lookup (name/code -> code)
 $penyulangs = [];
-$q = mysql_query("SELECT kodepenyul, uraianpenyul FROM v_penyulang");
+$penyulang_list = [];
+$q = mysql_query("SELECT kodepenyul, uraianpenyul FROM kodepenyulang");
 if ($q) {
     while ($r = mysql_fetch_assoc($q)) {
-        $penyulangs[strtoupper(trim($r['uraianpenyul']))] = $r['kodepenyul'];
-        $penyulangs[strtoupper(trim($r['kodepenyul']))] = $r['kodepenyul'];
+        $kode = strtoupper(trim($r['kodepenyul']));
+        $uraian = strtoupper(trim($r['uraianpenyul']));
+        
+        $penyulangs[$kode] = $kode;
+        $penyulangs[$uraian] = $kode;
+        
+        // Key without spaces/hyphens
+        $clean_key = str_replace([' ', '-', '_'], '', $uraian);
+        $penyulangs[$clean_key] = $kode;
+        
+        $penyulang_list[] = [
+            'kode' => $kode,
+            'uraian' => $uraian,
+            'clean' => $clean_key
+        ];
     }
 }
 
+// Alias dan variasi penulisan penyulang
+$penyulang_aliases = [
+    'LOROG' => 'LOROK',
+    'LOROK' => 'LOROK',
+    'KARANG TURI TGK' => 'KTURI',
+    'KARANG TURI' => 'KTURI',
+    'KARANGTURI' => 'KTURI',
+    'WATU KARUNG' => 'WKARU',
+    'WATUKARUNG' => 'WKARU',
+    'TEGAL OMBO' => 'T-OMB',
+    'TEGALOMBO' => 'T-OMB',
+    'KEBON AGUNG' => 'KBAGU',
+    'KEBONAGUNG' => 'KBAGU',
+    'KEBUN AGUNG' => 'KBAGU',
+    'KEBUNAGUNG' => 'KBAGU',
+    'NAWANGAN BLG' => 'NAWGN',
+    'NAWANGAN' => 'NAWGN',
+    'GANDUSARI' => 'GDSRI',
+    'BADEGAN' => 'BDGAN',
+    'JENANGAN' => 'JENNG',
+    'KADIPATEN' => 'KDPTN',
+    'SELOAJI' => 'SLOJI',
+    'MLARAK' => 'MLARK',
+    'SUMOROTO' => 'SUMOR',
+    'MUNJUNGAN' => 'MJGAN',
+    'MUJUNGAN' => 'MJGAN',
+    'PASAR PON' => 'PSRPO',
+    'NONGKODONO' => 'NKDNO',
+    'KAMPAC' => 'KMPAK',
+    'KAMPAK' => 'KMPAK',
+    'WADUK BENDO' => 'WBNDO'
+];
+foreach ($penyulang_aliases as $alias => $target) {
+    $penyulangs[$alias] = $target;
+    $penyulangs[str_replace(' ', '', $alias)] = $target;
+}
+
+// Map penyulang -> default unit dari kodekeypoint
+$penyulang_to_unit = [];
+$q_pu = mysql_query("SELECT kodepenyul, unit, count(*) as c FROM kodekeypoint GROUP BY kodepenyul, unit ORDER BY c DESC");
+if ($q_pu) {
+    while ($r = mysql_fetch_assoc($q_pu)) {
+        $pk = strtoupper(trim($r['kodepenyul']));
+        if (!isset($penyulang_to_unit[$pk]) && !empty($r['unit'])) {
+            $penyulang_to_unit[$pk] = trim($r['unit']);
+        }
+    }
+}
+// Tambahan manual mapping unit penyulang
+$penyulang_to_unit['LOROK'] = '51542';
+$penyulang_to_unit['LOROG'] = '51542';
+$penyulang_to_unit['GDSRI'] = '51543';
+$penyulang_to_unit['SUMOR'] = '51540';
+$penyulang_to_unit['BDGAN'] = '51540';
+$penyulang_to_unit['JENNG'] = '51540';
+$penyulang_to_unit['KDPTN'] = '51540';
+$penyulang_to_unit['SLOJI'] = '51540';
+$penyulang_to_unit['MLARK'] = '51540';
+$penyulang_to_unit['KTURI'] = '51543';
+$penyulang_to_unit['KBAGU'] = '51542';
+$penyulang_to_unit['WKARU'] = '51542';
+$penyulang_to_unit['T-OMB'] = '51542';
+
 // Keypoint lookup (description/id -> idkeypoint)
 $keypoints = [];
-$q = mysql_query("SELECT idkeypoint, keterangan FROM v_keypoint");
+$keypoint_details = [];
+$q = mysql_query("SELECT idkeypoint, keterangan, kodepenyul, unit FROM kodekeypoint");
 if ($q) {
     while ($r = mysql_fetch_assoc($q)) {
-        $keypoints[strtoupper(trim($r['keterangan']))] = $r['idkeypoint'];
-        $keypoints[strtoupper(trim($r['idkeypoint']))] = $r['idkeypoint'];
+        $id = $r['idkeypoint'];
+        $ket = strtoupper(trim($r['keterangan']));
+        $keypoints[$ket] = $id;
+        $keypoints[(string)$id] = $id;
+        
+        $clean = preg_replace('/^(REC\b\.?|CO\b\.?|PMCB\b\.?|LBSM?\b\.?|FCO\b\.?|PTCT\b\.?|DS\b\.?)\s*/i', '', $r['keterangan']);
+        $clean = strtoupper(trim($clean));
+        if (!empty($clean)) {
+            $keypoints[$clean] = $id;
+            $keypoint_details[] = [
+                'id' => $id,
+                'full' => $ket,
+                'clean' => $clean,
+                'penyul' => strtoupper(trim($r['kodepenyul'])),
+                'unit' => trim($r['unit'])
+            ];
+        }
     }
 }
 
@@ -107,8 +251,11 @@ $cuacas = [];
 $q = mysql_query("SELECT idcuaca, uraiancuaca FROM kodecuaca");
 if ($q) {
     while ($r = mysql_fetch_assoc($q)) {
-        $cuacas[strtoupper(trim($r['uraiancuaca']))] = $r['idcuaca'];
-        $cuacas[strtoupper(trim($r['idcuaca']))] = $r['idcuaca'];
+        $id = $r['idcuaca'];
+        $uraian = strtoupper(trim($r['uraiancuaca']));
+        $cuacas[$uraian] = $id;
+        $cuacas[str_replace(' ', '_', $uraian)] = $id;
+        $cuacas[(string)$id] = $id;
     }
 }
 
@@ -117,34 +264,236 @@ $jenis_gangguans = [];
 $q = mysql_query("SELECT idjenisgangguan, uraianjenisgangguan FROM kodejenisgangguan");
 if ($q) {
     while ($r = mysql_fetch_assoc($q)) {
-        $jenis_gangguans[strtoupper(trim($r['uraianjenisgangguan']))] = $r['idjenisgangguan'];
-        $jenis_gangguans[strtoupper(trim($r['idjenisgangguan']))] = $r['idjenisgangguan'];
+        $id = $r['idjenisgangguan'];
+        $uraian = strtoupper(trim($r['uraianjenisgangguan']));
+        $jenis_gangguans[$uraian] = $id;
+        $jenis_gangguans[str_replace(' ', '_', $uraian)] = $id;
+        $jenis_gangguans[(string)$id] = $id;
     }
 }
 
 $inserted = 0;
+$updated = 0;
+$skipped = 0;
 $errors = [];
 
 foreach ($data as $index => $row) {
     $rowNum = $index + 2; // Row number in Excel (header is row 1)
     
-    // Extract and map fields
+    $raw_unit_check = isset($row['Unit']) ? strtoupper(trim($row['Unit'])) : '';
+    $raw_penyulang_check = isset($row['Penyulang']) ? strtoupper(trim($row['Penyulang'])) : '';
+    if (in_array($raw_unit_check, ['NIHIL', '-', 'NONE', 'TIDAK ADA']) || in_array($raw_penyulang_check, ['NIHIL', '-', 'NONE', 'TIDAK ADA', 'NORMAL', 'AMAN', 'KOSONG'])) {
+        $skipped++;
+        continue;
+    }
+
+    // 1. Tanggal Gangguan & Kategori Gangguan (PMT / REC)
+    $raw_tglgangguan = isset($row['Tanggal Gangguan']) ? trim($row['Tanggal Gangguan']) : '';
+    $tag_tgl = '';
+    $tglgangguan = parseCustomDateTime($raw_tglgangguan, $tag_tgl);
+    
+    $raw_kat = isset($row['Kategori Gangguan']) ? strtoupper(trim($row['Kategori Gangguan'])) : '';
+    if (!empty($raw_kat)) {
+        $kat_gangguan = $raw_kat;
+    } elseif (!empty($tag_tgl) && in_array($tag_tgl, ['REC', 'PMT'])) {
+        $kat_gangguan = $tag_tgl;
+    } elseif (stripos($raw_tglgangguan, 'REC') !== false) {
+        $kat_gangguan = 'REC';
+    } elseif (stripos($raw_tglgangguan, 'PMT') !== false) {
+        $kat_gangguan = 'PMT';
+    } elseif (!empty($row['Keypoint ID'])) {
+        $kat_gangguan = 'REC';
+    } else {
+        $kat_gangguan = 'PMT';
+    }
+    
+    // Pastikan nilai kat_gangguan hanya PMT atau REC
+    if (strpos($kat_gangguan, 'PMT') !== false) {
+        $kat_gangguan = 'PMT';
+    } else {
+        $kat_gangguan = 'REC';
+    }
+    
+    // 2. Kode Gangguan
     $kodegangguan = isset($row['Kode Gangguan']) ? mysql_real_escape_string(strtoupper(trim($row['Kode Gangguan']))) : '';
-    $tglgangguan = isset($row['Tanggal Gangguan']) ? mysql_real_escape_string(trim($row['Tanggal Gangguan'])) : '';
-    $kat_gangguan = isset($row['Kategori Gangguan']) ? mysql_real_escape_string(strtoupper(trim($row['Kategori Gangguan']))) : '';
     
-    $raw_unit = isset($row['Unit']) ? strtoupper(trim($row['Unit'])) : '';
-    $unit = isset($units[$raw_unit]) ? $units[$raw_unit] : '';
-    
+    // 3. Penyulang
     $raw_penyulang = isset($row['Penyulang']) ? strtoupper(trim($row['Penyulang'])) : '';
-    $penyulang_code = isset($penyulangs[$raw_penyulang]) ? $penyulangs[$raw_penyulang] : '';
     
+    // Jika baris berisi 'NIHIL', '-', '0', atau kosong (artinya tidak ada gangguan di shift/hari tersebut), lewati tanpa error
+    if (empty($raw_penyulang) || in_array($raw_penyulang, ['NIHIL', '-', '0', 'NONE', 'TIDAK ADA', 'TIDAK GANGGUAN', 'AMAN', 'NORMAL', 'KOSONG', 'NIL'])) {
+        $skipped++;
+        continue;
+    }
+    if ($kodegangguan === 'NIHIL' || stripos($kodegangguan, 'NIHIL') !== false) {
+        $skipped++;
+        continue;
+    }
+    
+    $penyulang_code = '';
+    if (!empty($raw_penyulang)) {
+        if (isset($penyulangs[$raw_penyulang])) {
+            $penyulang_code = $penyulangs[$raw_penyulang];
+        } else {
+            $no_space = str_replace([' ', '-', '_'], '', $raw_penyulang);
+            if (isset($penyulangs[$no_space])) {
+                $penyulang_code = $penyulangs[$no_space];
+            } else {
+                // Handle variasi akhiran G -> K (misal LOROG -> LOROK)
+                $alt_k = preg_replace('/G$/i', 'K', $raw_penyulang);
+                $alt_k_nospace = str_replace([' ', '-', '_'], '', $alt_k);
+                if (isset($penyulangs[$alt_k])) {
+                    $penyulang_code = $penyulangs[$alt_k];
+                } elseif (isset($penyulangs[$alt_k_nospace])) {
+                    $penyulang_code = $penyulangs[$alt_k_nospace];
+                } else {
+                    $alt = str_replace('KEBON', 'KEBUN', $raw_penyulang);
+                    $alt_nospace = str_replace([' ', '-', '_'], '', $alt);
+                    if (isset($penyulangs[$alt])) {
+                        $penyulang_code = $penyulangs[$alt];
+                    } elseif (isset($penyulangs[$alt_nospace])) {
+                        $penyulang_code = $penyulangs[$alt_nospace];
+                    } else {
+                        $stripped = preg_replace('/\s+(TGK|PCT|PNG|BLG|TRENGGALEK|PACITAN|PONOROGO|BALONG)$/i', '', $raw_penyulang);
+                        $stripped_nospace = str_replace([' ', '-', '_'], '', $stripped);
+                        if (isset($penyulangs[$stripped])) {
+                            $penyulang_code = $penyulangs[$stripped];
+                        } elseif (isset($penyulangs[$stripped_nospace])) {
+                            $penyulang_code = $penyulangs[$stripped_nospace];
+                        } else {
+                            foreach ($penyulang_list as $p) {
+                                if (strpos($raw_penyulang, $p['uraian']) !== false || strpos($p['uraian'], $raw_penyulang) !== false) {
+                                    $penyulang_code = $p['kode'];
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Fuzzy matching jika belum cocok sama sekali (kemiripan >= 75%)
+        if (empty($penyulang_code)) {
+            $bestKode = null;
+            $highestSim = 0;
+            $cleanInput = str_replace([' ', '-', '_'], '', $raw_penyulang);
+            foreach ($penyulang_list as $p) {
+                similar_text($raw_penyulang, $p['uraian'], $sim);
+                if ($sim > $highestSim) {
+                    $highestSim = $sim;
+                    $bestKode = $p['kode'];
+                }
+                similar_text($cleanInput, $p['clean'], $simNoSpace);
+                if ($simNoSpace > $highestSim) {
+                    $highestSim = $simNoSpace;
+                    $bestKode = $p['kode'];
+                }
+            }
+            if ($highestSim >= 75) {
+                $penyulang_code = $bestKode;
+            }
+        }
+    }
+    
+    // 4. Unit
+    $raw_unit = isset($row['Unit']) ? strtoupper(trim($row['Unit'])) : '';
+    $unit = '';
+    if (!empty($raw_unit)) {
+        if (isset($units[$raw_unit])) {
+            $unit = $units[$raw_unit];
+        } else {
+            foreach ($units as $uk => $uv) {
+                if (strpos($raw_unit, $uk) !== false || strpos($uk, $raw_unit) !== false) {
+                    $unit = $uv;
+                    break;
+                }
+            }
+        }
+    }
+    // Jika unit di Excel kosong, otomatis cari dari kode penyulang
+    if (empty($unit) && !empty($penyulang_code) && isset($penyulang_to_unit[$penyulang_code])) {
+        $unit = $penyulang_to_unit[$penyulang_code];
+    }
+    // Fallback jika unit masih belum terisi
+    if (empty($unit)) {
+        if (stripos($raw_unit, 'TRENGGALEK') !== false) $unit = '51543';
+        elseif (stripos($raw_unit, 'PACITAN') !== false) $unit = '51542';
+        elseif (stripos($raw_unit, 'BALONG') !== false) $unit = '51541';
+        elseif (stripos($raw_unit, 'PONOROGO') !== false) $unit = '51540';
+        else $unit = '51540'; // Default ULP Ponorogo
+    }
+    
+    // 5. Keypoint ID
     $raw_keypoint = isset($row['Keypoint ID']) ? strtoupper(trim($row['Keypoint ID'])) : '';
-    $keypointid = isset($keypoints[$raw_keypoint]) ? $keypoints[$raw_keypoint] : '';
+    $keypointid = '';
+    if (!empty($raw_keypoint)) {
+        if (isset($keypoints[$raw_keypoint])) {
+            $keypointid = $keypoints[$raw_keypoint];
+        } elseif (isset($keypoints['REC ' . $raw_keypoint])) {
+            $keypointid = $keypoints['REC ' . $raw_keypoint];
+        } elseif (isset($keypoints['PMCB ' . $raw_keypoint])) {
+            $keypointid = $keypoints['PMCB ' . $raw_keypoint];
+        } elseif (isset($keypoints['LBS ' . $raw_keypoint])) {
+            $keypointid = $keypoints['LBS ' . $raw_keypoint];
+        } else {
+            foreach ($keypoint_details as $kd) {
+                if (!empty($penyulang_code) && $kd['penyul'] === $penyulang_code) {
+                    if (strpos($kd['clean'], $raw_keypoint) !== false || strpos($raw_keypoint, $kd['clean']) !== false) {
+                        $keypointid = $kd['id'];
+                        break;
+                    }
+                }
+            }
+            if (empty($keypointid)) {
+                foreach ($keypoint_details as $kd) {
+                    if (strpos($kd['clean'], $raw_keypoint) !== false || strpos($raw_keypoint, $kd['clean']) !== false) {
+                        $keypointid = $kd['id'];
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Auto-create keypoint jika belum ada di database
+        if (empty($keypointid) && !empty($penyulang_code)) {
+            $auto_ket = "REC " . $raw_keypoint;
+            $auto_unit = !empty($unit) ? $unit : "51540";
+            $escaped_ket = mysql_real_escape_string($auto_ket);
+            $escaped_penyul = mysql_real_escape_string($penyulang_code);
+            $escaped_unit = mysql_real_escape_string($auto_unit);
+            $insert_kp = mysql_query("INSERT INTO kodekeypoint (kodepenyul, jenis, keterangan, unit, zona, latitud, longitud, id_keypint) 
+                                      VALUES ('$escaped_penyul', 'REC', '$escaped_ket', '$escaped_unit', '1', '0', '0', 0)");
+            if ($insert_kp) {
+                $new_id = mysql_insert_id();
+                $keypointid = $new_id;
+                $keypoints[$raw_keypoint] = $new_id;
+                $keypoints[$auto_ket] = $new_id;
+            }
+        }
+    }
     
-    $kategorigangguan = isset($row['Kategori']) ? mysql_real_escape_string(strtoupper(trim($row['Kategori']))) : ''; // TEMPORER / PERMANEN
-    $tglmasuk = isset($row['Tanggal Masuk']) ? mysql_real_escape_string(trim($row['Tanggal Masuk'])) : '';
-    $relay = isset($row['Relay Kerja']) ? mysql_real_escape_string(strtoupper(trim($row['Relay Kerja']))) : '';
+    // 6. Kategori Gangguan (TEMPORER / PERMANEN)
+    $raw_kategori = isset($row['Kategori']) ? strtoupper(trim($row['Kategori'])) : '';
+    if (strpos($raw_kategori, 'PERM') !== false) {
+        $kategorigangguan = 'PERMANEN';
+    } else {
+        $kategorigangguan = 'TEMPORER';
+    }
+    
+    // 7. Tanggal Masuk & Relay Kerja
+    $raw_tglmasuk = isset($row['Tanggal Masuk']) ? trim($row['Tanggal Masuk']) : '';
+    $tag_masuk = '';
+    $tglmasuk = parseCustomDateTime($raw_tglmasuk, $tag_masuk);
+    if (empty($tglmasuk)) {
+        $tglmasuk = $tglgangguan;
+    }
+    
+    $relay = isset($row['Relay Kerja']) ? strtoupper(trim($row['Relay Kerja'])) : '';
+    if (empty($relay) && !empty($tag_masuk)) {
+        $relay = $tag_masuk;
+    }
+    
     $fasa = isset($row['Fasa']) ? mysql_real_escape_string(strtoupper(trim($row['Fasa']))) : '';
     
     $kv0 = isset($row['KV 0']) ? floatval($row['KV 0']) : 0;
@@ -153,47 +502,77 @@ foreach ($data as $index => $row) {
     $ies = isset($row['I S']) ? floatval($row['I S']) : 0;
     $it = isset($row['I T']) ? floatval($row['I T']) : 0;
     
+    // 8. Cuaca
     $raw_cuaca = isset($row['Cuaca']) ? strtoupper(trim($row['Cuaca'])) : '';
-    $cuacakode = isset($cuacas[$raw_cuaca]) ? $cuacas[$raw_cuaca] : '';
+    $raw_cuaca_clean = str_replace('_', ' ', $raw_cuaca);
+    $cuacakode = '';
+    if (!empty($raw_cuaca)) {
+        if (isset($cuacas[$raw_cuaca])) {
+            $cuacakode = $cuacas[$raw_cuaca];
+        } elseif (isset($cuacas[$raw_cuaca_clean])) {
+            $cuacakode = $cuacas[$raw_cuaca_clean];
+        } else {
+            foreach ($cuacas as $ck => $cid) {
+                if (!is_numeric($ck) && (strpos($ck, $raw_cuaca_clean) !== false || strpos($raw_cuaca_clean, $ck) !== false)) {
+                    $cuacakode = $cid;
+                    break;
+                }
+            }
+        }
+    }
+    if (empty($cuacakode)) {
+        $cuacakode = isset($cuacas['CERAH']) ? $cuacas['CERAH'] : 2;
+    }
     
+    // 9. Jenis Gangguan
     $raw_jenis = isset($row['Jenis Gangguan']) ? strtoupper(trim($row['Jenis Gangguan'])) : '';
-    $jeniskode = isset($jenis_gangguans[$raw_jenis]) ? $jenis_gangguans[$raw_jenis] : '';
+    $raw_jenis_clean = str_replace('_', ' ', $raw_jenis);
+    $raw_jenis_clean = preg_replace('/\s+/', ' ', $raw_jenis_clean);
+    
+    $jeniskode = '';
+    if (!empty($raw_jenis)) {
+        if (isset($jenis_gangguans[$raw_jenis])) {
+            $jeniskode = $jenis_gangguans[$raw_jenis];
+        } elseif (isset($jenis_gangguans[$raw_jenis_clean])) {
+            $jeniskode = $jenis_gangguans[$raw_jenis_clean];
+        } elseif (strpos($raw_jenis_clean, 'TERENCANA') !== false) {
+            $jeniskode = isset($jenis_gangguans['TIDAK TERENCANA']) ? $jenis_gangguans['TIDAK TERENCANA'] : 23;
+        } else {
+            // Auto-create jenis gangguan baru jika ada nama baru
+            $escaped_j = mysql_real_escape_string($raw_jenis_clean);
+            $ins_j = mysql_query("INSERT INTO kodejenisgangguan (uraianjenisgangguan) VALUES ('$escaped_j')");
+            if ($ins_j) {
+                $new_jid = mysql_insert_id();
+                $jeniskode = $new_jid;
+                $jenis_gangguans[$raw_jenis] = $new_jid;
+                $jenis_gangguans[$raw_jenis_clean] = $new_jid;
+            }
+        }
+    }
+    // Fallback jika kosong ke 22 (TIDAK DITEMUKAN)
+    if (empty($jeniskode)) {
+        $jeniskode = isset($jenis_gangguans['TIDAK DITEMUKAN']) ? $jenis_gangguans['TIDAK DITEMUKAN'] : 22;
+    }
     
     $latlokasi = isset($row['Latitude']) ? mysql_real_escape_string(trim($row['Latitude'])) : '';
     $longlokasi = isset($row['Longitude']) ? mysql_real_escape_string(trim($row['Longitude'])) : '';
     $hasiltemuan = isset($row['Hasil Temuan']) ? mysql_real_escape_string(strtoupper(trim($row['Hasil Temuan']))) : '';
     
-    // Validations
+    // Validasi esensial
     if (empty($tglgangguan)) {
-        $errors[] = "Baris $rowNum: Tanggal Gangguan kosong.";
-        continue;
-    }
-    if ($kat_gangguan !== 'PMT' && $kat_gangguan !== 'REC') {
-        $errors[] = "Baris $rowNum: Kategori Gangguan harus 'PMT' atau 'REC'.";
-        continue;
-    }
-    if (empty($unit)) {
-        $errors[] = "Baris $rowNum: Unit '$raw_unit' tidak ditemukan di database.";
+        $errors[] = "Baris $rowNum: Tanggal Gangguan kosong atau tidak valid.";
         continue;
     }
     if (empty($penyulang_code)) {
         $errors[] = "Baris $rowNum: Penyulang '$raw_penyulang' tidak ditemukan di database.";
         continue;
     }
-    if ($kat_gangguan === 'REC' && empty($keypointid)) {
-        $errors[] = "Baris $rowNum: Keypoint '$raw_keypoint' tidak ditemukan di database.";
-        continue;
-    }
-    if (empty($cuacakode)) {
-        $errors[] = "Baris $rowNum: Cuaca '$raw_cuaca' tidak ditemukan di database.";
-        continue;
-    }
-    if (empty($jeniskode)) {
-        $errors[] = "Baris $rowNum: Jenis Gangguan '$raw_jenis' tidak ditemukan di database.";
-        continue;
-    }
     
-    // Check for duplicate data in database
+    // Process base64 photo uploads
+    $foto1 = isset($row['foto1']) ? saveBase64Image($row['foto1'], 'FILE1') : '';
+    $foto2 = isset($row['foto2']) ? saveBase64Image($row['foto2'], 'FILE2') : '';
+
+    // Check for duplicate data in database - if exists, UPDATE (timpa dengan data terbaru)
     $dup_where = "";
     if (!empty($kodegangguan)) {
         $dup_where = "kodegangguan = '$kodegangguan'";
@@ -201,25 +580,62 @@ foreach ($data as $index => $row) {
         $dup_where = "tglgangguan = '$tglgangguan' AND unit = '$unit' AND penyulang = '$penyulang_code' AND keypointid = '$keypointid'";
     }
     
-    $check = mysql_query("SELECT COUNT(*) FROM datagangguan WHERE $dup_where");
-    $rowCheck = mysql_fetch_array($check);
-    if ($rowCheck[0] > 0) {
-        $errors[] = "Baris $rowNum: Data gangguan " . (!empty($kodegangguan) ? "dengan Kode Gangguan '$kodegangguan'" : "pada waktu/lokasi tersebut") . " sudah ada di database (data duplikat).";
+    $escaped_tgl = mysql_real_escape_string($tglgangguan);
+    $escaped_tglmasuk = mysql_real_escape_string($tglmasuk);
+    $escaped_kat = mysql_real_escape_string($kat_gangguan);
+    $escaped_kategori = mysql_real_escape_string($kategorigangguan);
+    $escaped_relay = mysql_real_escape_string($relay);
+    
+    $check = mysql_query("SELECT idgangguan, foto1, foto2 FROM datagangguan WHERE $dup_where LIMIT 1");
+    if ($check && mysql_num_rows($check) > 0) {
+        $existing = mysql_fetch_assoc($check);
+        $existing_id = $existing['idgangguan'];
+        
+        // Tetap gunakan foto lama jika di file baru tidak menyertakan foto
+        $final_foto1 = !empty($foto1) ? $foto1 : $existing['foto1'];
+        $final_foto2 = !empty($foto2) ? $foto2 : $existing['foto2'];
+
+        $update_sql = "UPDATE datagangguan SET 
+            tglgangguan = '$escaped_tgl',
+            kat_gangguan = '$escaped_kat',
+            unit = '$unit',
+            penyulang = '$penyulang_code',
+            keypointid = '$keypointid',
+            kategorigangguan = '$escaped_kategori',
+            tglmasuk = '$escaped_tglmasuk',
+            relay = '$escaped_relay',
+            fasa = '$fasa',
+            kv0 = '$kv0',
+            inetral = '$inetral',
+            ir = '$ir',
+            ies = '$ies',
+            it = '$it',
+            cuacakode = '$cuacakode',
+            jeniskode = '$jeniskode',
+            hasiltemuan = '$hasiltemuan',
+            foto1 = '$final_foto1',
+            foto2 = '$final_foto2',
+            latlokasi = '$latlokasi',
+            longlokasi = '$longlokasi'
+            WHERE idgangguan = $existing_id";
+        
+        $res_up = mysql_query($update_sql);
+        if ($res_up) {
+            $updated++;
+        } else {
+            $errors[] = "Baris $rowNum: Gagal memperbarui data (" . mysql_error() . ")";
+        }
         continue;
     }
 
-    // Process base64 photo uploads
-    $foto1 = isset($row['foto1']) ? saveBase64Image($row['foto1'], 'FILE1') : '';
-    $foto2 = isset($row['foto2']) ? saveBase64Image($row['foto2'], 'FILE2') : '';
-
-    // SQL insert
+    // SQL insert jika data belum ada
     $sql = "INSERT INTO datagangguan (
         tglgangguan, kat_gangguan, unit, penyulang, keypointid, kategorigangguan, 
         tglmasuk, relay, fasa, kv0, inetral, ir, ies, it, cuacakode, jeniskode, 
         hasiltemuan, foto1, foto2, latlokasi, longlokasi, kodegangguan
     ) VALUES (
-        '$tglgangguan', '$kat_gangguan', '$unit', '$penyulang_code', '$keypointid', '$kategorigangguan',
-        '$tglmasuk', '$relay', '$fasa', '$kv0', '$inetral', '$ir', '$ies', '$it', 
+        '$escaped_tgl', '$escaped_kat', '$unit', '$penyulang_code', '$keypointid', '$escaped_kategori',
+        '$escaped_tglmasuk', '$escaped_relay', '$fasa', '$kv0', '$inetral', '$ir', '$ies', '$it', 
         '$cuacakode', '$jeniskode', '$hasiltemuan', '$foto1', '$foto2', '$latlokasi', '$longlokasi', '$kodegangguan'
     )";
     
@@ -232,7 +648,8 @@ foreach ($data as $index => $row) {
 }
 
 echo json_encode([
-    'success' => count($errors) === 0 || $inserted > 0,
+    'success' => count($errors) === 0 || $inserted > 0 || $updated > 0,
     'inserted' => $inserted,
+    'updated' => $updated,
     'errors' => $errors
 ]);

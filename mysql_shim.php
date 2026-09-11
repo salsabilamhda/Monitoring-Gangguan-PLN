@@ -79,6 +79,20 @@ if (!function_exists('mysql_connect')) {
         return mysqli_real_escape_string($link, $unescaped_string);
     }
 
+    function mysql_insert_id($link_identifier = null) {
+        global $__mysql_shim_link;
+        $link = $link_identifier ?: $__mysql_shim_link;
+        if (!$link) return 0;
+        return mysqli_insert_id($link);
+    }
+
+    function mysql_affected_rows($link_identifier = null) {
+        global $__mysql_shim_link;
+        $link = $link_identifier ?: $__mysql_shim_link;
+        if (!$link) return 0;
+        return mysqli_affected_rows($link);
+    }
+
     function mysql_close($link_identifier = null) {
         global $__mysql_shim_link;
         $link = $link_identifier ?: $__mysql_shim_link;

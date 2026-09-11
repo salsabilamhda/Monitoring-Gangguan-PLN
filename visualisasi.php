@@ -326,15 +326,19 @@ if ($selected_bulan !== 'ALL' && is_numeric($selected_bulan)) {
 }
 
 $outage_days = [];
+$outage_details = [];
 $q_outages = mysql_query("
-    SELECT g.unit, DAY(g.tglgangguan) as hari
+    SELECT g.unit, DAY(g.tglgangguan) as hari, g.kategorigangguan, COUNT(*) as jml
     FROM datagangguan g
-    $where_sql AND g.kategorigangguan = 'PERMANEN'
+    $where_sql
+    GROUP BY g.unit, DAY(g.tglgangguan), g.kategorigangguan
 ");
 if ($q_outages) {
     while ($row = mysql_fetch_assoc($q_outages)) {
         $raw_unit = $row['unit'];
         $day = (int)$row['hari'];
+        $kat = !empty($row['kategorigangguan']) ? $row['kategorigangguan'] : 'GANGGUAN';
+        $jml = (int)$row['jml'];
         
         $ulp_name = '';
         if ($raw_unit == 51540) $ulp_name = 'PONOROGO';
@@ -344,6 +348,10 @@ if ($q_outages) {
         
         if ($ulp_name !== '') {
             $outage_days[$ulp_name][$day] = true;
+            if (!isset($outage_details[$ulp_name][$day])) {
+                $outage_details[$ulp_name][$day] = [];
+            }
+            $outage_details[$ulp_name][$day][] = "$jml $kat";
         }
     }
 }
@@ -368,20 +376,29 @@ if ($selected_unit !== 'ALL' && !empty($selected_unit) && $selected_unit !== '51
 
 $where_sql_rec = "WHERE " . implode(" AND ", $where_parts_rec);
 
-// Find latest date in the filtered period (for tambahan calculation)
-$latest_date_rec = null;
-$q_latest = mysql_query("SELECT MAX(DATE(tglgangguan)) FROM v_datagangguan $where_sql_rec");
-if ($q_latest && mysql_num_rows($q_latest) > 0) {
-    $row_latest = mysql_fetch_array($q_latest);
-    $latest_date_rec = $row_latest[0];
+// Find latest date separately for Temporer & Permanen (for tambahan calculation)
+$latest_date_temp = null;
+$q_latest_temp = mysql_query("SELECT MAX(DATE(tglgangguan)) FROM v_datagangguan $where_sql_rec AND kategorigangguan = 'TEMPORER'");
+if ($q_latest_temp && mysql_num_rows($q_latest_temp) > 0) {
+    $row_lt = mysql_fetch_array($q_latest_temp);
+    $latest_date_temp = $row_lt[0];
 }
 
-// Build tambahan expression safely (only if we have a valid latest date)
-$tambahan_expr_temp = !empty($latest_date_rec)
-    ? "SUM(IF(DATE(tglgangguan) = '" . mysql_real_escape_string($latest_date_rec) . "', hitung, 0))"
+$latest_date_perm = null;
+$q_latest_perm = mysql_query("SELECT MAX(DATE(tglgangguan)) FROM v_datagangguan $where_sql_rec AND kategorigangguan = 'PERMANEN'");
+if ($q_latest_perm && mysql_num_rows($q_latest_perm) > 0) {
+    $row_lp = mysql_fetch_array($q_latest_perm);
+    $latest_date_perm = $row_lp[0];
+}
+
+// Build tambahan expressions safely based on each category's own latest date
+$tambahan_expr_temp = !empty($latest_date_temp)
+    ? "SUM(IF(DATE(tglgangguan) = '" . mysql_real_escape_string($latest_date_temp) . "', hitung, 0))"
     : "0";
 
-$tambahan_expr_perm = $tambahan_expr_temp; // same date applies to both
+$tambahan_expr_perm = !empty($latest_date_perm)
+    ? "SUM(IF(DATE(tglgangguan) = '" . mysql_real_escape_string($latest_date_perm) . "', hitung, 0))"
+    : "0";
 
 // Query Temporer recloser trips from monitoring bulanan
 $q_temp = mysql_query("
@@ -399,7 +416,7 @@ $q_temp = mysql_query("
     FROM v_datagangguan
     $where_sql_rec AND kategorigangguan = 'TEMPORER'
     GROUP BY recloser_name, ulp
-    ORDER BY jumlah_trip DESC
+    ORDER BY jumlah_trip DESC, tambahan DESC
     LIMIT 10
 ");
 
@@ -419,7 +436,7 @@ $q_perm = mysql_query("
     FROM v_datagangguan
     $where_sql_rec AND kategorigangguan = 'PERMANEN'
     GROUP BY recloser_name, ulp
-    ORDER BY jumlah_trip DESC
+    ORDER BY jumlah_trip DESC, tambahan DESC
     LIMIT 10
 ");
 ?>
@@ -664,9 +681,10 @@ $q_perm = mysql_query("
                         <?php 
                           $has_outage = isset($outage_days[$ulp][$d]);
                           $bg_color = $has_outage ? '#dc3545' : '#ffc107'; // Red vs Yellow
+                          $detail_txt = $has_outage ? ('Ada Gangguan: ' . implode(', ', $outage_details[$ulp][$d])) : 'Tanpa Padam / Gangguan';
                         ?>
                         <td style="background-color: <?php echo $bg_color; ?>; padding: 0 !important; height: 42px;" 
-                            title="<?php echo $ulp . ' - Tanggal ' . $d . ': ' . ($has_outage ? 'Ada Padam (PMT)' : 'Tanpa Padam'); ?>">
+                            title="<?php echo $ulp . ' - Tanggal ' . $d . ': ' . $detail_txt; ?>">
                           <!-- Empty space to show color -->
                         </td>
                       <?php endfor; ?>
@@ -677,8 +695,8 @@ $q_perm = mysql_query("
             </div>
           </div>
           <div class="d-flex align-items-center justify-content-center gap-3 mt-3" style="font-size: 11px;">
-            <div class="d-flex align-items-center"><span class="d-inline-block rounded-1 me-1" style="width:12px; height:12px; background-color:#ffc107;"></span> Tanpa Padam</div>
-            <div class="d-flex align-items-center"><span class="d-inline-block rounded-1 me-1" style="width:12px; height:12px; background-color:#dc3545;"></span> Ada Padam (PMT)</div>
+            <div class="d-flex align-items-center"><span class="d-inline-block rounded-1 me-1" style="width:12px; height:12px; background-color:#ffc107;"></span> Tanpa Padam / Gangguan</div>
+            <div class="d-flex align-items-center"><span class="d-inline-block rounded-1 me-1" style="width:12px; height:12px; background-color:#dc3545;"></span> Ada Gangguan (Permanen / Temporer)</div>
           </div>
         </div>
       </div>

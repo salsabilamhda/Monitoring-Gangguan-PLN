@@ -432,6 +432,40 @@ foreach ($data as $index => $row) {
         $raw_kp_clean = strtoupper(trim(preg_replace('/^(REC\b\.?|CO\b\.?|PMCB\b\.?|LBSM?\b\.?|FCO\b\.?|PTCT\b\.?|DS\b\.?)\s*/i', '', $raw_keypoint)));
         $raw_kp_clean_nospace = str_replace([' ', '-', '_'], '', $raw_kp_clean);
 
+        // Kamus Alias Khusus (Typo / Beda Singkatan / Ejaan Lapangan)
+        $alias_map = [
+            'KUTUKULON' => 'KUTU KULON',
+            'RECKUTUKULON' => 'REC KUTU KULON',
+            'BOKMUSO' => 'BOK MUSO',
+            'RECBOKMUSO' => 'PMCB BOK MUSO',
+            'BOKMUSC' => 'BOK MUSO',
+            'SEWELUD' => 'SEWELUT',
+            'RECSEWELUD' => 'PMCB SEWELUT',
+            'KOJOR' => 'KOJUR',
+            'RECKOJOR' => 'REC KOJUR',
+            'NGAMBAAN' => 'NGAMBAKAN',
+            'RECNGAMBAAN' => 'REC NGAMBAKAN',
+            'PUSKESMAS BARENG' => 'PUSRENG',
+            'PUSKESMASBARENG' => 'PUSRENG',
+            'PT TOP' => 'TOP',
+            'PTTOP' => 'TOP',
+            'TRANJANG' => 'TRANJANG 1',
+            'SUMBEREJO' => 'SUMBERREJO',
+        ];
+
+        if (isset($alias_map[$raw_kp_clean])) {
+            $raw_kp_clean = $alias_map[$raw_kp_clean];
+            $raw_kp_clean_nospace = str_replace([' ', '-', '_'], '', $raw_kp_clean);
+        } elseif (isset($alias_map[$raw_kp_clean_nospace])) {
+            $raw_kp_clean = $alias_map[$raw_kp_clean_nospace];
+            $raw_kp_clean_nospace = str_replace([' ', '-', '_'], '', $raw_kp_clean);
+        }
+
+        // Penanganan Khusus Perbatasan / Manuver Antar-Penyulang
+        if ($raw_kp_clean === 'REJOWINANGUN' && $penyulang_code === 'PGLAN') {
+            $penyulang_code = 'MELIS'; // PMCB REJOWINANGUN terdaftar di feeder MELIS
+        }
+
         // 1. PRIORITAS UTAMA: Cari pada PENYULANG YANG SAMA (menghindari salah sambung antar-wilayah)
         if (!empty($penyulang_code)) {
             // 1a. Exact match pada penyulang yang sama
@@ -472,6 +506,33 @@ foreach ($data as $index => $row) {
                     }
                 }
             }
+
+            // 1d. FUZZY MATCHING (Kemiripan Teks Otomatis pada Penyulang yang Sama)
+            // Otomatis mengenali typo baru di masa depan (beda 1-2 huruf, beda vokal, dll)
+            if (empty($keypointid) && strlen($raw_kp_clean_nospace) >= 3) {
+                $best_sim = 0;
+                $best_id = 0;
+                foreach ($keypoint_details as $kd) {
+                    if ($kd['penyul'] === $penyulang_code) {
+                        $kd_clean_nospace = str_replace([' ', '-', '_'], '', $kd['clean']);
+                        
+                        similar_text($kd_clean_nospace, $raw_kp_clean_nospace, $percent);
+                        $lev = levenshtein($kd_clean_nospace, $raw_kp_clean_nospace);
+                        $max_len = max(strlen($kd_clean_nospace), strlen($raw_kp_clean_nospace));
+                        
+                        // Syarat: kemiripan teks >= 70% atau selisih maksimal 1-2 karakter
+                        if ($percent >= 70 || ($max_len <= 5 && $lev <= 1) || ($max_len > 5 && $lev <= 2)) {
+                            if ($percent > $best_sim) {
+                                $best_sim = $percent;
+                                $best_id = $kd['id'];
+                            }
+                        }
+                    }
+                }
+                if (!empty($best_id)) {
+                    $keypointid = $best_id;
+                }
+            }
         }
 
         // 2. Direct ID check jika Excel berisi angka ID langsung
@@ -479,8 +540,8 @@ foreach ($data as $index => $row) {
             $keypointid = (int)$raw_keypoint;
         }
 
-        // 3. AUTO-CREATE KEYPOINT JIKA BELUM ADA (Otomatis didaftarkan ke Penyulang & Unit yang sesuai di Excel)
-        if (empty($keypointid) && !empty($penyulang_code)) {
+        // 3. AUTO-CREATE KEYPOINT JIKA BELUM ADA (Hanya jika bukan kata dummy 'NIHIL')
+        if (empty($keypointid) && !empty($penyulang_code) && $raw_kp_clean !== 'NIHIL') {
             $detected_jenis = 'REC';
             if (preg_match('/^(PMCB|LBSM?|CO|FCO|PTCT)\b/i', $raw_keypoint, $mj)) {
                 $detected_jenis = strtoupper($mj[1]);

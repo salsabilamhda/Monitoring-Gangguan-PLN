@@ -124,18 +124,29 @@ $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
             </tr>
             <?php
             $tables_to_check = array('datagangguan', 'kodeunit', 'kodepenyulang', 'kodekeypoint', 'kodecuaca', 'kodejenisgangguan');
+            $has_empty_master = false;
             foreach ($tables_to_check as $tbl) {
                 $check_q = @mysql_query("SELECT COUNT(*) as total FROM `{$tbl}`");
                 if ($check_q) {
                     $row = mysql_fetch_assoc($check_q);
                     $count = isset($row['total']) ? (int)$row['total'] : 0;
+                    if ($tbl !== 'datagangguan' && $count === 0) {
+                        $has_empty_master = true;
+                    }
                     echo "<tr><td><code>{$tbl}</code></td><td><span class=\"badge-ok\">Ditemukan</span></td><td><strong>" . number_format($count) . " data</strong></td></tr>";
                 } else {
                     echo "<tr><td><code>{$tbl}</code></td><td><span class=\"badge-fail\">Tidak Ditemukan</span></td><td>Error: " . htmlspecialchars(mysql_error()) . "</td></tr>";
+                    $has_empty_master = true;
                 }
             }
             ?>
         </table>
+        <?php if ($has_empty_master): ?>
+            <div style="margin-top: 15px; padding-top: 12px; border-top: 1px dashed #ced4da;">
+                <p style="margin: 0 0 10px 0; color: #856404; font-size: 13px;">⚠️ Terdeteksi tabel master masih kosong. Klik tombol di bawah untuk mengisi data secara otomatis:</p>
+                <a href="isi_datamaster.php" class="btn btn-success">⚡ Buka Halaman Pengisian Data Master (1-Klik)</a>
+            </div>
+        <?php endif; ?>
     </div>
 
     <!-- 4. Pengecekan View v_datagangguan -->

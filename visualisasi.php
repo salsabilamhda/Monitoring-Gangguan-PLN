@@ -1,4 +1,9 @@
 <?php
+// Prevent aggressive browser/iframe caching
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+
 include "connect.php";
 
 // Fetch distinct years from database for filter dropdown
@@ -51,9 +56,15 @@ if ($selected_tahun !== 'ALL' && !empty($selected_tahun)) {
 if ($selected_bulan !== 'ALL' && !empty($selected_bulan)) {
     $where_clauses[] = "MONTH(g.tglgangguan) = '" . mysql_real_escape_string($selected_bulan) . "'";
 }
-if ($selected_unit !== 'ALL' && !empty($selected_unit) && $selected_unit !== '5125') {
-    $where_clauses[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
-    $where_clauses_no_month[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
+$is_all_unit = ($selected_unit === 'ALL' || empty($selected_unit) || $selected_unit === '5125' || $selected_unit === '5152');
+if (!$is_all_unit) {
+    if ($selected_unit === '51540') {
+        $where_clauses[] = "(g.unit = '51540' OR g.unit = '5125' OR g.unit = '5152')";
+        $where_clauses_no_month[] = "(g.unit = '51540' OR g.unit = '5125' OR g.unit = '5152')";
+    } else {
+        $where_clauses[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
+        $where_clauses_no_month[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
+    }
 }
 
 $where_sql = "";
@@ -116,10 +127,12 @@ $r_top_weather = mysql_fetch_assoc($q_top_weather);
 $top_weather = isset($r_top_weather['uraiancuaca']) ? $r_top_weather['uraiancuaca'] : '-';
 
 // 2. Data Top ULP Gangguan Permanen & Temporer
-$ulp_stats = [];
-$ulp_labels = [];
-$ulp_permanen = [];
-$ulp_temporer = [];
+$ulp_map = [
+    'TGK' => ['label' => 'TGK', 'permanen' => 0, 'temporer' => 0, 'total' => 0],
+    'PNG' => ['label' => 'PNG', 'permanen' => 0, 'temporer' => 0, 'total' => 0],
+    'PCT' => ['label' => 'PCT', 'permanen' => 0, 'temporer' => 0, 'total' => 0],
+    'BLG' => ['label' => 'BLG', 'permanen' => 0, 'temporer' => 0, 'total' => 0],
+];
 
 $q_ulp_stats = mysql_query("
     SELECT COALESCE(u.uraian, g.unit) as uraian, g.unit,
@@ -140,56 +153,50 @@ if ($q_ulp_stats) {
 
         $name = !empty($row['uraian']) ? $row['uraian'] : $unit_val;
         $upper = strtoupper($name);
+        $short = '';
         if (strpos($upper, 'TRENGGALEK') !== false || $unit_val === '51543') $short = 'TGK';
-        elseif ((strpos($upper, 'PONOROGO') !== false && strpos($upper, 'ULP') !== false) || $unit_val === '51540') $short = 'PNG';
         elseif (strpos($upper, 'PACITAN') !== false || $unit_val === '51542') $short = 'PCT';
         elseif (strpos($upper, 'BALONG') !== false || $unit_val === '51541') $short = 'BLG';
-        else $short = $name;
+        elseif (strpos($upper, 'PONOROGO') !== false || $unit_val === '51540' || $unit_val === '5125' || $unit_val === '5152') $short = 'PNG';
+        else continue;
 
         $p = (int)$row['permanen'];
         $t = (int)$row['temporer'];
 
-        $ulp_stats[] = [
-            'label' => $short,
-            'permanen' => $p,
-            'temporer' => $t
-        ];
-        $ulp_labels[] = $short;
-        $ulp_permanen[] = $p;
-        $ulp_temporer[] = $t;
+        if (isset($ulp_map[$short])) {
+            $ulp_map[$short]['permanen'] += $p;
+            $ulp_map[$short]['temporer'] += $t;
+            $ulp_map[$short]['total'] += ($p + $t);
+        }
     }
 }
 
-// Fallback jika belum ada data agar chart tetap menampilkan kerangka ULP
-if (empty($ulp_labels)) {
-    $default_ulps = ['PCT', 'TGK', 'PNG', 'BLG'];
-    foreach ($default_ulps as $df) {
-        $ulp_labels[] = $df;
-        $ulp_permanen[] = 0;
-        $ulp_temporer[] = 0;
-        $ulp_stats[] = [
-            'label' => $df,
-            'permanen' => 0,
-            'temporer' => 0
-        ];
-    }
+// Urutkan ULP berdasarkan total gangguan (seperti pada Excel)
+uasort($ulp_map, function($a, $b) {
+    if ($b['total'] === $a['total']) return 0;
+    return ($b['total'] > $a['total']) ? 1 : -1;
+});
+
+$ulp_stats = [];
+$ulp_labels = [];
+$ulp_permanen = [];
+$ulp_temporer = [];
+foreach ($ulp_map as $item) {
+    $ulp_stats[] = $item;
+    $ulp_labels[] = $item['label'];
+    $ulp_permanen[] = $item['permanen'];
+    $ulp_temporer[] = $item['temporer'];
 }
 
 // 3. Data Gangguan Permanen & Temporer per ULP Bulanan
-$ulp_key_map = [
-    'ULP BALONG' => 'BALONG',
-    'ULP PACITAN' => 'PACITAN',
-    'ULP PONOROGO' => 'PONOROGO',
-    'ULP TRENGGALEK' => 'TRENGGALEK',
-    'UP3 PONOROGO' => 'UP3 PNG'
-];
+$chart_ulps = ['PNG', 'BLG', 'PCT', 'TGK', 'UP3 PNG'];
 
 $monthly_data_pmt = [];
 $monthly_data_rec = [];
 $available_months = [];
 
 $q_monthly_ulp = mysql_query("
-    SELECT COALESCE(u.uraian, g.unit) as uraian, MONTH(g.tglgangguan) as bulan,
+    SELECT g.unit, COALESCE(u.uraian, g.unit) as uraian, MONTH(g.tglgangguan) as bulan,
            SUM(CASE WHEN UPPER(TRIM(g.kategorigangguan)) = 'PERMANEN' THEN 1 ELSE 0 END) as permanen,
            SUM(CASE WHEN UPPER(TRIM(g.kategorigangguan)) = 'TEMPORER' THEN 1 ELSE 0 END) as temporer
     FROM datagangguan g
@@ -198,14 +205,22 @@ $q_monthly_ulp = mysql_query("
     GROUP BY g.unit, u.uraian, MONTH(g.tglgangguan)
 ");
 while ($row = mysql_fetch_assoc($q_monthly_ulp)) {
-    $raw_name = $row['uraian'];
-    $mapped_name = 'LAINNYA';
-    foreach ($ulp_key_map as $k => $v) {
-        if (strpos(strtoupper($raw_name), $k) !== false) {
-            $mapped_name = $v;
-            break;
-        }
+    $raw_unit = trim($row['unit']);
+    $raw_name = strtoupper($row['uraian']);
+    $mapped_name = '';
+
+    if ($raw_unit === '51540' || strpos($raw_name, 'PONOROGO') !== false) {
+        $mapped_name = 'PNG';
+    } elseif ($raw_unit === '51541' || strpos($raw_name, 'BALONG') !== false) {
+        $mapped_name = 'BLG';
+    } elseif ($raw_unit === '51542' || strpos($raw_name, 'PACITAN') !== false) {
+        $mapped_name = 'PCT';
+    } elseif ($raw_unit === '51543' || strpos($raw_name, 'TRENGGALEK') !== false) {
+        $mapped_name = 'TGK';
     }
+
+    if ($mapped_name === '') continue;
+
     $bulan = (int)$row['bulan'];
     $available_months[$bulan] = true;
     
@@ -215,6 +230,19 @@ while ($row = mysql_fetch_assoc($q_monthly_ulp)) {
     $monthly_data_pmt[$mapped_name][$bulan] = (int)$row['permanen'];
     $monthly_data_rec[$mapped_name][$bulan] = (int)$row['temporer'];
 }
+
+// Hitung UP3 PNG sebagai akumulasi penjumlahan (SUM) dari ke-4 ULP per bulan
+foreach ($available_months as $bulan => $v_m) {
+    $sum_pmt = 0;
+    $sum_rec = 0;
+    foreach (['PNG', 'BLG', 'PCT', 'TGK'] as $u) {
+        $sum_pmt += isset($monthly_data_pmt[$u][$bulan]) ? $monthly_data_pmt[$u][$bulan] : 0;
+        $sum_rec += isset($monthly_data_rec[$u][$bulan]) ? $monthly_data_rec[$u][$bulan] : 0;
+    }
+    $monthly_data_pmt['UP3 PNG'][$bulan] = $sum_pmt;
+    $monthly_data_rec['UP3 PNG'][$bulan] = $sum_rec;
+}
+
 ksort($available_months);
 $available_months_keys = array_keys($available_months);
 if (empty($available_months_keys)) {
@@ -226,7 +254,6 @@ $month_abbrev = [
     7 => 'Jul', 8 => 'Agt', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'
 ];
 
-$chart_ulps = ['BALONG', 'PACITAN', 'PONOROGO', 'TRENGGALEK', 'UP3 PNG'];
 $datasets_pmt = [];
 $datasets_rec = [];
 
@@ -270,42 +297,62 @@ foreach ($available_months_keys as $m) {
 // 4. Data Trend Gangguan 3 Top Skor Temporer & Permanen Keypoint
 $ulp_keypoint_data = [];
 $target_ulps = [
+    51540 => 'PONOROGO',
     51541 => 'BALONG',
     51542 => 'PACITAN',
-    51540 => 'PONOROGO',
     51543 => 'TRENGGALEK'
 ];
 
-foreach ($target_ulps as $ulp_id => $ulp_name) {
+$is_specific_month = ($selected_bulan !== 'ALL' && !empty($selected_bulan) && is_numeric($selected_bulan));
+
+if (!$is_all_unit && isset($target_ulps[$selected_unit])) {
+    $active_target_ulps = [$selected_unit => $target_ulps[$selected_unit]];
+    $limit_clause = $is_specific_month ? "" : "LIMIT 10";
+} else {
+    $active_target_ulps = $target_ulps;
+    $limit_clause = $is_specific_month ? "" : "LIMIT 3";
+}
+
+foreach ($active_target_ulps as $ulp_id => $ulp_name) {
+    $unit_cond = ($ulp_id == 51540) ? "(g.unit = '51540' OR g.unit = '5125' OR g.unit = '5152')" : "g.unit = '$ulp_id'";
+
     $q_kp = mysql_query("
         SELECT 
-            IF(COALESCE(k.keterangan, '') != '', k.keterangan, 'PMT') as nama_keypoint,
+            COALESCE(NULLIF(TRIM(k.keterangan), ''), CONCAT('PMT ', COALESCE(NULLIF(TRIM(c.uraianpenyul), ''), g.penyulang))) as nama_keypoint,
             SUM(CASE WHEN UPPER(TRIM(g.kategorigangguan)) = 'TEMPORER' THEN 1 ELSE 0 END) as temporer,
             SUM(CASE WHEN UPPER(TRIM(g.kategorigangguan)) = 'PERMANEN' THEN 1 ELSE 0 END) as permanen,
             COUNT(*) as total
         FROM datagangguan g
+        LEFT JOIN kodepenyulang c ON g.penyulang = c.kodepenyul
         LEFT JOIN kodekeypoint k ON g.keypointid = k.idkeypoint
-        $where_sql AND g.unit = '$ulp_id'
+        $where_sql AND $unit_cond
         GROUP BY nama_keypoint
+        HAVING nama_keypoint IS NOT NULL AND TRIM(nama_keypoint) != '' AND TRIM(nama_keypoint) != 'PMT'
+        ORDER BY total DESC
+        $limit_clause
     ");
     
     $kp_list = [];
     if ($q_kp) {
         while ($r_kp = mysql_fetch_assoc($q_kp)) {
-            $clean_name = preg_replace('/^(REC\b\.?|CO\b\.?|PMCB\b\.?|LBS\b\.?|FCO\b\.?)\s*/i', '', $r_kp['nama_keypoint']);
-            if ($clean_name === 'TOP') {
-                $clean_name = 'PT TOP';
-            }
+            $raw_k = trim($r_kp['nama_keypoint']);
+            $clean_name = preg_replace('/^(REC\b\.?|CO\b\.?|PMCB\b\.?|LBS\b\.?|FCO\b\.?)\s*/i', '', $raw_k);
+            $clean_name = trim($clean_name);
+            if ($clean_name === 'TOP') $clean_name = 'PT TOP';
+            if ($clean_name === 'KOJUR') $clean_name = 'KOJOR';
+            if ($clean_name === 'SUMBERREJO') $clean_name = 'SUMBEREJO';
+            if ($clean_name === 'BOK MUSO') $clean_name = 'BOK MUSO';
+            if ($clean_name === 'JATIPRAHU') $clean_name = 'JATI PRAHU';
+            if (strpos($clean_name, 'TRANJANG') !== false) $clean_name = 'TRANJANG';
+            if ($clean_name === '') $clean_name = $raw_k;
+
             $kp_list[] = [
                 'name' => $clean_name,
                 'permanen' => (int)$r_kp['permanen'],
-                'temporer' => (int)$r_kp['temporer']
+                'temporer' => (int)$r_kp['temporer'],
+                'total' => (int)$r_kp['total']
             ];
         }
-        // Urutkan alfabetis sesuai tampilan Excel
-        usort($kp_list, function($a, $b) {
-            return strcmp($a['name'], $b['name']);
-        });
     }
     $ulp_keypoint_data[$ulp_name] = $kp_list;
 }
@@ -361,8 +408,12 @@ if (!$is_all_months) {
     $grid_where_clauses[] = "MONTH(g.tglgangguan) = " . (int)$selected_bulan;
 }
 
-if ($selected_unit !== 'ALL' && !empty($selected_unit) && $selected_unit !== '5125') {
-    $grid_where_clauses[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
+if (!$is_all_unit) {
+    if ($selected_unit === '51540') {
+        $grid_where_clauses[] = "(g.unit = '51540' OR g.unit = '5125' OR g.unit = '5152')";
+    } else {
+        $grid_where_clauses[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
+    }
 }
 
 $grid_where_sql = "WHERE " . implode(" AND ", $grid_where_clauses);
@@ -377,16 +428,16 @@ $q_outages = mysql_query("
 ");
 if ($q_outages) {
     while ($row = mysql_fetch_assoc($q_outages)) {
-        $raw_unit = $row['unit'];
+        $raw_unit = trim($row['unit']);
         $day = (int)$row['hari'];
         $kat = !empty($row['kategorigangguan']) ? $row['kategorigangguan'] : 'GANGGUAN';
         $jml = (int)$row['jml'];
         
         $ulp_name = '';
-        if ($raw_unit == 51540) $ulp_name = 'PONOROGO';
-        elseif ($raw_unit == 51541) $ulp_name = 'BALONG';
-        elseif ($raw_unit == 51542) $ulp_name = 'PACITAN';
-        elseif ($raw_unit == 51543) $ulp_name = 'TRENGGALEK';
+        if ($raw_unit == '51543' || stripos($raw_unit, 'TRENGGALEK') !== false) $ulp_name = 'TGK';
+        elseif ($raw_unit == '51542' || stripos($raw_unit, 'PACITAN') !== false) $ulp_name = 'PCT';
+        elseif ($raw_unit == '51541' || stripos($raw_unit, 'BALONG') !== false) $ulp_name = 'BLG';
+        elseif ($raw_unit == '51540' || $raw_unit == '5125' || $raw_unit == '5152' || stripos($raw_unit, 'PONOROGO') !== false) $ulp_name = 'PNG';
         
         if ($ulp_name !== '') {
             $outage_days[$ulp_name][$day] = true;
@@ -412,8 +463,12 @@ if ($selected_bulan !== 'ALL' && is_numeric($selected_bulan)) {
     $where_parts_rec[] = "MONTH(g.tglgangguan) = " . (int)$selected_bulan;
 }
 
-if ($selected_unit !== 'ALL' && !empty($selected_unit) && $selected_unit !== '5125') {
-    $where_parts_rec[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
+if (!$is_all_unit) {
+    if ($selected_unit === '51540') {
+        $where_parts_rec[] = "(g.unit = '51540' OR g.unit = '5125' OR g.unit = '5152')";
+    } else {
+        $where_parts_rec[] = "g.unit = '" . mysql_real_escape_string($selected_unit) . "'";
+    }
 }
 
 $where_sql_rec = "WHERE " . implode(" AND ", $where_parts_rec);
@@ -445,20 +500,20 @@ $tambahan_expr_perm = !empty($latest_date_perm)
 // Query Temporer recloser trips
 $q_temp = mysql_query("
     SELECT 
-        IF(COALESCE(d.keterangan, '') != '', d.keterangan, CONCAT('PMT ', COALESCE(c.uraianpenyul, g.penyulang))) as recloser_name,
+        COALESCE(d.keterangan, CONCAT('PMT ', COALESCE(c.uraianpenyul, g.penyulang))) as recloser_name,
         CASE 
-            WHEN g.unit = '51540' THEN 'PNG'
+            WHEN g.unit = '51540' OR g.unit = '5125' OR g.unit = '5152' THEN 'PNG'
             WHEN g.unit = '51541' THEN 'BLG'
             WHEN g.unit = '51542' THEN 'PCT'
             WHEN g.unit = '51543' THEN 'TGK'
-            ELSE 'UP3'
+            ELSE 'PNG'
         END as ulp,
         SUM(COALESCE(g.hitung, 1)) as jumlah_trip,
         $tambahan_expr_temp as tambahan
     FROM datagangguan g
     LEFT JOIN kodepenyulang c ON g.penyulang = c.kodepenyul
     LEFT JOIN kodekeypoint d ON g.keypointid = d.idkeypoint
-    $where_sql_rec AND UPPER(TRIM(g.kategorigangguan)) = 'TEMPORER'
+    $where_sql_rec AND UPPER(TRIM(g.kategorigangguan)) = 'TEMPORER' AND (d.keterangan IS NOT NULL AND TRIM(d.keterangan) != '')
     GROUP BY recloser_name, ulp
     ORDER BY jumlah_trip DESC, tambahan DESC
     LIMIT 10
@@ -467,13 +522,13 @@ $q_temp = mysql_query("
 // Query Permanen recloser trips
 $q_perm = mysql_query("
     SELECT 
-        IF(COALESCE(d.keterangan, '') != '', d.keterangan, CONCAT('PMT ', COALESCE(c.uraianpenyul, g.penyulang))) as recloser_name,
+        COALESCE(d.keterangan, CONCAT('PMT ', COALESCE(c.uraianpenyul, g.penyulang))) as recloser_name,
         CASE 
-            WHEN g.unit = '51540' THEN 'PNG'
+            WHEN g.unit = '51540' OR g.unit = '5125' OR g.unit = '5152' THEN 'PNG'
             WHEN g.unit = '51541' THEN 'BLG'
             WHEN g.unit = '51542' THEN 'PCT'
             WHEN g.unit = '51543' THEN 'TGK'
-            ELSE 'UP3'
+            ELSE 'PNG'
         END as ulp,
         SUM(COALESCE(g.hitung, 1)) as jumlah_trip,
         $tambahan_expr_perm as tambahan
@@ -820,17 +875,25 @@ $q_perm = mysql_query("
                   </tr>
                 </thead>
                 <tbody>
-                  <?php foreach (['BALONG', 'PACITAN', 'PONOROGO', 'TRENGGALEK'] as $ulp): ?>
+                  <?php 
+                  $calendar_ulps = [
+                    'PNG' => 'PNG',
+                    'BLG' => 'BLG',
+                    'PCT' => 'PCT',
+                    'TGK' => 'TGK'
+                  ];
+                  foreach ($calendar_ulps as $ulp_key => $ulp_disp): 
+                  ?>
                     <tr>
-                      <td class="fw-bold text-start" style="padding: 5px !important; font-size: 10px; height: 42px;"><?php echo $ulp; ?></td>
+                      <td class="fw-bold text-center" style="padding: 5px !important; font-size: 11px; height: 38px;"><?php echo $ulp_disp; ?></td>
                       <?php for ($d = 1; $d <= $days_in_month; $d++): ?>
                         <?php 
-                          $has_outage = isset($outage_days[$ulp][$d]);
-                          $bg_color = $has_outage ? '#dc3545' : '#ffc107'; // Red vs Yellow
-                          $detail_txt = $has_outage ? ('Ada Gangguan: ' . implode(', ', $outage_details[$ulp][$d])) : 'Tanpa Padam / Gangguan';
+                          $has_outage = isset($outage_days[$ulp_key][$d]);
+                          $bg_color = $has_outage ? '#dc3545' : '#ffc107'; // Merah (Ada Gangguan) vs Kuning (Tanpa Padam / Nyala)
+                          $detail_txt = $has_outage ? ('Ada Gangguan: ' . implode(', ', $outage_details[$ulp_key][$d])) : 'Tanpa Padam / Nyala';
                         ?>
-                        <td style="background-color: <?php echo $bg_color; ?>; padding: 0 !important; height: 42px;" 
-                            title="<?php echo $ulp . ' - Tanggal ' . $d . ': ' . $detail_txt; ?>">
+                        <td style="background-color: <?php echo $bg_color; ?>; padding: 0 !important; height: 38px;" 
+                            title="<?php echo $ulp_disp . ' - Tanggal ' . $d . ': ' . $detail_txt; ?>">
                           <!-- Empty space to show color -->
                         </td>
                       <?php endfor; ?>
@@ -841,8 +904,8 @@ $q_perm = mysql_query("
             </div>
           </div>
           <div class="d-flex align-items-center justify-content-center gap-3 mt-3" style="font-size: 11px;">
-            <div class="d-flex align-items-center"><span class="d-inline-block rounded-1 me-1" style="width:12px; height:12px; background-color:#ffc107;"></span> Tanpa Padam / Gangguan</div>
-            <div class="d-flex align-items-center"><span class="d-inline-block rounded-1 me-1" style="width:12px; height:12px; background-color:#dc3545;"></span> Ada Gangguan (Permanen / Temporer)</div>
+            <div class="d-flex align-items-center"><span class="d-inline-block rounded-1 me-1" style="width:12px; height:12px; background-color:#ffc107;"></span> Nyala (Tanpa Padam)</div>
+            <div class="d-flex align-items-center"><span class="d-inline-block rounded-1 me-1" style="width:12px; height:12px; background-color:#dc3545;"></span> Padam (Ada Gangguan Permanen / Temporer)</div>
           </div>
         </div>
       </div>
@@ -926,10 +989,23 @@ $q_perm = mysql_query("
                   $tambahan_temp = (int)$r['tambahan'];
                   $jumlah_trip_temp = (int)$r['jumlah_trip'] - $tambahan_temp;
                   $total = (int)$r['jumlah_trip'];
+                  $raw_recloser = trim($r['recloser_name']);
+                  $clean_recloser = preg_replace('/^(REC\b\.?|CO\b\.?|PMCB\b\.?|LBS\b\.?|FCO\b\.?)\s*/i', '', $raw_recloser);
+                  $clean_recloser = trim($clean_recloser);
+                  if ($clean_recloser === 'TOP') $clean_recloser = 'PT TOP';
+                  if ($clean_recloser === 'KOJUR') $clean_recloser = 'KOJOR';
+                  if ($clean_recloser === 'SUMBERREJO') $clean_recloser = 'SUMBEREJO';
+                  if ($clean_recloser === 'BOK MUSO') $clean_recloser = 'BOKSUMO';
+                  if ($clean_recloser === 'JATIPRAHU') $clean_recloser = 'JATI PRAHU';
+                  if (strpos($clean_recloser, 'TRANJANG') !== false) $clean_recloser = 'TRANJANG';
+                  if ($clean_recloser === 'TEMON') {
+                      $clean_recloser = 'TEMON_' . $r['ulp'];
+                  }
+                  if ($clean_recloser === '') $clean_recloser = $raw_recloser;
                 ?>
                   <tr>
                     <td><?php echo $no_temp++; ?></td>
-                    <td class="text-start fw-bold"><?php echo htmlspecialchars($r['recloser_name']); ?></td>
+                    <td class="text-start fw-bold"><?php echo htmlspecialchars($clean_recloser); ?></td>
                     <td><span class="badge bg-secondary"><?php echo htmlspecialchars($r['ulp']); ?></span></td>
                     <td style="background-color: #fcf8e3; font-weight: bold; color: #242c6d;"><?php echo $jumlah_trip_temp; ?></td>
                     <td><?php echo $tambahan_temp > 0 ? '<span class="badge bg-warning text-dark">+' . $tambahan_temp . '</span>' : '-'; ?></td>
@@ -975,10 +1051,23 @@ $q_perm = mysql_query("
                   $jumlah_trip_perm = (int)$r['jumlah_trip'] - $tambahan_perm;
                   $total = (int)$r['jumlah_trip'];
                   $bg_class = ($no_perm == 1) ? 'style="background-color: #f8d7da; color: #721c24;"' : '';
+                  $raw_recloser = trim($r['recloser_name']);
+                  $clean_recloser = preg_replace('/^(REC\b\.?|CO\b\.?|PMCB\b\.?|LBS\b\.?|FCO\b\.?)\s*/i', '', $raw_recloser);
+                  $clean_recloser = trim($clean_recloser);
+                  if ($clean_recloser === 'TOP') $clean_recloser = 'PT TOP';
+                  if ($clean_recloser === 'KOJUR') $clean_recloser = 'KOJOR';
+                  if ($clean_recloser === 'SUMBERREJO') $clean_recloser = 'SUMBEREJO';
+                  if ($clean_recloser === 'BOK MUSO') $clean_recloser = 'BOKSUMO';
+                  if ($clean_recloser === 'JATIPRAHU') $clean_recloser = 'JATI PRAHU';
+                  if (strpos($clean_recloser, 'TRANJANG') !== false) $clean_recloser = 'TRANJANG';
+                  if ($clean_recloser === 'TEMON') {
+                      $clean_recloser = 'TEMON_' . $r['ulp'];
+                  }
+                  if ($clean_recloser === '') $clean_recloser = $raw_recloser;
                 ?>
                   <tr <?php echo $bg_class; ?>>
                     <td><?php echo $no_perm++; ?></td>
-                    <td class="text-start fw-bold"><?php echo htmlspecialchars($r['recloser_name']); ?></td>
+                    <td class="text-start fw-bold"><?php echo htmlspecialchars($clean_recloser); ?></td>
                     <td><span class="badge bg-secondary"><?php echo htmlspecialchars($r['ulp']); ?></span></td>
                     <td style="background-color: #fcf8e3; font-weight: bold; color: #dc3545;"><?php echo $jumlah_trip_perm; ?></td>
                     <td><?php echo $tambahan_perm > 0 ? '<span class="badge bg-danger">+' . $tambahan_perm . '</span>' : '-'; ?></td>

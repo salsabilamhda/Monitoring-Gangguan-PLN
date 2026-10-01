@@ -41,17 +41,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = "Gagal memperbarui data: " . mysql_error();
                 }
             }
+        } elseif ($_POST['action'] === 'delete') {
+            $kodeunit = mysql_real_escape_string($_POST['kodeunit']);
+            $query = "DELETE FROM kodeunit WHERE kodeunit = '$kodeunit'";
+            if (mysql_query($query)) {
+                $success = "Data Unit berhasil dihapus!";
+            } else {
+                $error = "Gagal menghapus data: " . mysql_error();
+            }
         }
-    }
-}
-
-if (isset($_GET['delete'])) {
-    $kodeunit = mysql_real_escape_string($_GET['delete']);
-    $query = "DELETE FROM kodeunit WHERE kodeunit = '$kodeunit'";
-    if (mysql_query($query)) {
-        $success = "Data Unit berhasil dihapus!";
-    } else {
-        $error = "Gagal menghapus data: " . mysql_error();
     }
 }
 ?>
@@ -181,11 +179,13 @@ if (isset($_GET['delete'])) {
                           data-uraian="<?php echo htmlspecialchars($row['uraian']); ?>">
                     <i class="fa fa-edit"></i> Edit
                   </button>
-                  <a href="?delete=<?php echo urlencode($row['kodeunit']); ?>" 
-                     class="btn btn-danger btn-sm" 
-                     onclick="return confirm('Apakah Anda yakin ingin menghapus unit ini?');">
-                    <i class="fa fa-trash"></i> Hapus
-                  </a>
+                  <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus unit ini?');">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="kodeunit" value="<?php echo htmlspecialchars($row['kodeunit']); ?>">
+                    <button type="submit" class="btn btn-danger btn-sm">
+                      <i class="fa fa-trash"></i> Hapus
+                    </button>
+                  </form>
                 </td>
               </tr>
             <?php endwhile; ?>

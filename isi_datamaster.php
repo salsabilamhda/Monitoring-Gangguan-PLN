@@ -55,12 +55,12 @@ function executeSqlFile($filePath) {
     );
 }
 
-// Cek apakah tombol dieksekusi atau parameter ?run=1 diberikan
-if (isset($_POST['run_seed']) || isset($_GET['run'])) {
+// Cek apakah form POST disubmit
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['run_seed'])) {
     $sqlFile = __DIR__ . '/insert_datamaster.sql';
     
     // Jika dicentang opsi reset/bersihkan kodekeypoint lama agar urutan ID sinkron
-    if (isset($_POST['reset_keypoint']) || isset($_GET['reset'])) {
+    if (isset($_POST['reset_keypoint'])) {
         @mysql_query("TRUNCATE TABLE `kodekeypoint`");
     }
     

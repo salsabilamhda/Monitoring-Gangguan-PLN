@@ -10,8 +10,8 @@ $q2 = mysql_query("SELECT DISTINCT namaulp FROM ukurgardu WHERE namaulp IS NOT N
 while ($d2 = mysql_fetch_object($q2)) $unit_list[] = $d2->namaulp;
 
 // Hapus satu data
-if (isset($_GET['hapus']) && is_numeric($_GET['hapus'])) {
-  $id = intval($_GET['hapus']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['hapus_id']) && is_numeric($_POST['hapus_id'])) {
+  $id = intval($_POST['hapus_id']);
   mysql_query("DELETE FROM ukurgardu WHERE id = $id");
   echo "<script>alert('✅ Data berhasil dihapus'); window.location='rekapukurgardu.php';</script>";
   exit;
@@ -156,7 +156,10 @@ if (isset($_POST['hapus_semua'])) {
               <td class='$warna'>" . round($persen,1) . "%</td>
               <td class='text-center'>
                 <button type='button' class='btn btn-outline-primary btn-sm btnDetail' data-json='$encoded'>Detail</button>
-                <a href='?hapus={$r['id']}' onclick='return confirm(\"Hapus data ini?\")' class='btn btn-outline-danger btn-sm'>Hapus</a>
+                <form method='POST' action='' style='display:inline;' onsubmit='return confirm(\"Hapus data ini?\");'>
+                  <input type='hidden' name='hapus_id' value='{$r['id']}'>
+                  <button type='submit' class='btn btn-outline-danger btn-sm'>Hapus</button>
+                </form>
               </td>
             </tr>";
             $no++;

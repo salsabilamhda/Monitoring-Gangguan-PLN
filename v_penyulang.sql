@@ -33,7 +33,18 @@ SET time_zone = "+00:00";
 -- Structure for view `v_penyulang`
 --
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`sarc5556`@`localhost` SQL SECURITY DEFINER VIEW `v_penyulang`  AS SELECT DISTINCT `a`.`kodepenyul` AS `kodepenyul`, `a`.`unit` AS `unit`, `b`.`uraian` AS `uraian`, `c`.`uraianpenyul` AS `uraianpenyul` FROM ((`kodekeypoint` `a` join `kodeunit` `b`) join `kodepenyulang` `c`) WHERE `a`.`unit` = `b`.`kodeunit` AND `a`.`kodepenyul` = `c`.`kodepenyul` ;
+DROP VIEW IF EXISTS `v_penyulang`;
+
+CREATE VIEW `v_penyulang` AS 
+SELECT DISTINCT 
+  `a`.`kodepenyul` AS `kodepenyul`, 
+  `a`.`unit` AS `unit`, 
+  COALESCE(`b`.`uraian`, `a`.`unit`) AS `uraian`, 
+  COALESCE(`c`.`uraianpenyul`, `a`.`kodepenyul`) AS `uraianpenyul` 
+FROM `kodekeypoint` `a` 
+LEFT JOIN `kodeunit` `b` ON `a`.`unit` = `b`.`kodeunit` 
+LEFT JOIN `kodepenyulang` `c` ON `a`.`kodepenyul` = `c`.`kodepenyul` 
+WHERE `a`.`kodepenyul` != '' AND `a`.`kodepenyul` IS NOT NULL;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

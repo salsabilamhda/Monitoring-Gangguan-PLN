@@ -71,17 +71,26 @@
                         <input type="text" class="form-control" required="" name="tglawal" placeholder="Start Date" value="<?php echo date('m/d/Y'); ?>" />
                         <input type="text" class="form-control" required="" name="tglakhir" placeholder="End Date" value="<?php echo date('m/d/Y'); ?>" />
                     </div>
+                    <?php
+                    include_once "connect.php";
+                    $q_last = @mysql_query("SELECT DATE_FORMAT(MAX(tglgangguan), '%d/%m/%Y') as last_date FROM datagangguan");
+                    $last_date = ($q_last && $r_last = @mysql_fetch_assoc($q_last)) ? $r_last['last_date'] : '';
+                    if (!empty($last_date)) {
+                        echo "<small class='text-muted mt-1 d-block'><i class='fa fa-info-circle text-primary'></i> Data gangguan terakhir tercatat: <b>{$last_date}</b></small>";
+                    }
+                    ?>
                 </div>
                 <div class="col-md-6 col-12 mb-3">
                     <h6 class="sub-title mb-3">Pilih Unit</h6>
                     <select class="select2 form-control custom-select" name="unit" required style="width: 100%;">
                         <option value=""></option>
                         <?php
-                        include "connect.php";
-                        $v = mysql_query("select * from kodeunit");
+                        include_once "connect.php";
+                        $v = mysql_query("select * from kodeunit ORDER BY CASE WHEN uraian LIKE '%UP3%' THEN 0 ELSE 1 END, uraian ASC");
                         while($vata = mysql_fetch_object($v))
                         {
-                            echo "<option value= $vata->kodeunit >$vata->uraian</option>";
+                            $is_sel = (stripos($vata->uraian, 'UP3') !== false || $vata->kodeunit == '5125' || $vata->kodeunit == '5152') ? 'selected' : '';
+                            echo "<option value='{$vata->kodeunit}' {$is_sel}>{$vata->uraian}</option>";
                         }
                         ?>
                     </select>

@@ -47,5 +47,6 @@ if (!mysql_select_db($dbase, $koneksi)) {
 }
 
 @mysql_query("SET NAMES 'utf8'", $koneksi);
+@mysql_query("SET sql_mode = ''", $koneksi);
 ?>
 

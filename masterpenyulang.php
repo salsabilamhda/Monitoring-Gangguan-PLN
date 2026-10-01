@@ -41,17 +41,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = "Gagal memperbarui data: " . mysql_error();
                 }
             }
+        } elseif ($_POST['action'] === 'delete') {
+            $kodepenyul = mysql_real_escape_string($_POST['kodepenyul']);
+            $query = "DELETE FROM kodepenyulang WHERE kodepenyul = '$kodepenyul'";
+            if (mysql_query($query)) {
+                $success = "Data Penyulang berhasil dihapus!";
+            } else {
+                $error = "Gagal menghapus data: " . mysql_error();
+            }
         }
-    }
-}
-
-if (isset($_GET['delete'])) {
-    $kodepenyul = mysql_real_escape_string($_GET['delete']);
-    $query = "DELETE FROM kodepenyulang WHERE kodepenyul = '$kodepenyul'";
-    if (mysql_query($query)) {
-        $success = "Data Penyulang berhasil dihapus!";
-    } else {
-        $error = "Gagal menghapus data: " . mysql_error();
     }
 }
 ?>
@@ -181,11 +179,13 @@ if (isset($_GET['delete'])) {
                           data-uraian="<?php echo htmlspecialchars($row['uraianpenyul']); ?>">
                     <i class="fa fa-edit"></i> Edit
                   </button>
-                  <a href="?delete=<?php echo urlencode($row['kodepenyul']); ?>" 
-                     class="btn btn-danger btn-sm" 
-                     onclick="return confirm('Apakah Anda yakin ingin menghapus penyulang ini?');">
-                    <i class="fa fa-trash"></i> Hapus
-                  </a>
+                  <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus penyulang ini?');">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="kodepenyul" value="<?php echo htmlspecialchars($row['kodepenyul']); ?>">
+                    <button type="submit" class="btn btn-danger btn-sm">
+                      <i class="fa fa-trash"></i> Hapus
+                    </button>
+                  </form>
                 </td>
               </tr>
             <?php endwhile; ?>

@@ -34,17 +34,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = "Gagal memperbarui data: " . mysql_error();
                 }
             }
+        } elseif ($_POST['action'] === 'delete') {
+            $idjenisgangguan = (int)$_POST['idjenisgangguan'];
+            $query = "DELETE FROM kodejenisgangguan WHERE idjenisgangguan = $idjenisgangguan";
+            if (mysql_query($query)) {
+                $success = "Data Jenis Gangguan berhasil dihapus!";
+            } else {
+                $error = "Gagal menghapus data: " . mysql_error();
+            }
         }
-    }
-}
-
-if (isset($_GET['delete'])) {
-    $idjenisgangguan = (int)$_GET['delete'];
-    $query = "DELETE FROM kodejenisgangguan WHERE idjenisgangguan = $idjenisgangguan";
-    if (mysql_query($query)) {
-        $success = "Data Jenis Gangguan berhasil dihapus!";
-    } else {
-        $error = "Gagal menghapus data: " . mysql_error();
     }
 }
 ?>
@@ -174,11 +172,13 @@ if (isset($_GET['delete'])) {
                           data-uraian="<?php echo htmlspecialchars($row['uraianjenisgangguan']); ?>">
                     <i class="fa fa-edit"></i> Edit
                   </button>
-                  <a href="?delete=<?php echo urlencode($row['idjenisgangguan']); ?>" 
-                     class="btn btn-danger btn-sm" 
-                     onclick="return confirm('Apakah Anda yakin ingin menghapus data jenis gangguan ini?');">
-                    <i class="fa fa-trash"></i> Hapus
-                  </a>
+                  <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data jenis gangguan ini?');">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="idjenisgangguan" value="<?php echo htmlspecialchars($row['idjenisgangguan']); ?>">
+                    <button type="submit" class="btn btn-danger btn-sm">
+                      <i class="fa fa-trash"></i> Hapus
+                    </button>
+                  </form>
                 </td>
               </tr>
             <?php endwhile; ?>

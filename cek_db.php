@@ -9,9 +9,12 @@ $action = isset($_GET['action']) ? $_GET['action'] : '';
 $fix_message = '';
 
 // Aksi perbaikan otomatis jika ditekan
-if ($action === 'fix_view') {
-    $drop = @mysql_query("DROP VIEW IF EXISTS v_datagangguan");
-    $create_sql = "CREATE VIEW v_datagangguan AS
+if ($action === 'fix_view' || $action === 'fix_all_views') {
+    $errors = array();
+
+    // 1. Perbaiki v_datagangguan
+    @mysql_query("DROP VIEW IF EXISTS v_datagangguan");
+    $sql_gangguan = "CREATE VIEW v_datagangguan AS
     SELECT 
       a.kodegangguan AS kodegangguan,
       a.idgangguan AS idgangguan,
@@ -49,11 +52,103 @@ if ($action === 'fix_view') {
     LEFT JOIN kodekeypoint d ON a.keypointid = d.idkeypoint
     LEFT JOIN kodecuaca e ON a.cuacakode = e.idcuaca
     LEFT JOIN kodejenisgangguan f ON a.jeniskode = f.idjenisgangguan";
+    if (!@mysql_query($sql_gangguan)) {
+        $errors[] = "v_datagangguan: " . mysql_error();
+    }
 
-    if (@mysql_query($create_sql)) {
-        $fix_message = '<div class="alert alert-success">✅ <strong>BERHASIL!</strong> View <code>v_datagangguan</code> telah berhasil diperbaiki dan hak akses telah diperbarui!</div>';
+    // 2. Perbaiki v_penyulang
+    @mysql_query("DROP VIEW IF EXISTS v_penyulang");
+    $sql_penyulang = "CREATE VIEW v_penyulang AS 
+    SELECT DISTINCT 
+      a.kodepenyul AS kodepenyul, 
+      a.unit AS unit, 
+      COALESCE(b.uraian, a.unit) AS uraian, 
+      COALESCE(c.uraianpenyul, a.kodepenyul) AS uraianpenyul 
+    FROM kodekeypoint a 
+    LEFT JOIN kodeunit b ON a.unit = b.kodeunit 
+    LEFT JOIN kodepenyulang c ON a.kodepenyul = c.kodepenyul 
+    WHERE a.kodepenyul != '' AND a.kodepenyul IS NOT NULL";
+    if (!@mysql_query($sql_penyulang)) {
+        $errors[] = "v_penyulang: " . mysql_error();
+    }
+
+    // 3. Perbaiki v_keypoint
+    @mysql_query("DROP VIEW IF EXISTS v_keypoint");
+    $sql_keypoint = "CREATE VIEW v_keypoint AS 
+    SELECT 
+      a.idkeypoint AS idkeypoint, 
+      a.kodepenyul AS kodepenyul, 
+      a.jenis AS jenis, 
+      a.keterangan AS keterangan, 
+      a.unit AS unit, 
+      a.zona AS zona, 
+      a.latitud AS latitud, 
+      a.longitud AS longitud, 
+      a.id_keypint AS id_keypint, 
+      COALESCE(b.uraianpenyul, a.kodepenyul) AS uraianpenyul, 
+      COALESCE(c.uraian, a.unit) AS uraian 
+    FROM kodekeypoint a 
+    LEFT JOIN kodepenyulang b ON a.kodepenyul = b.kodepenyul 
+    LEFT JOIN kodeunit c ON a.unit = c.kodeunit";
+    if (!@mysql_query($sql_keypoint)) {
+        $errors[] = "v_keypoint: " . mysql_error();
+    }
+
+    if (empty($errors)) {
+        $fix_message = '<div class="alert alert-success">✅ <strong>BERHASIL!</strong> Semua View (<code>v_datagangguan</code>, <code>v_penyulang</code>, <code>v_keypoint</code>) telah berhasil diperbaiki tanpa definer dan hak akses aktif di hosting!</div>';
     } else {
-        $fix_message = '<div class="alert alert-danger">❌ <strong>GAGAL:</strong> ' . htmlspecialchars(mysql_error()) . '</div>';
+        $fix_message = '<div class="alert alert-danger">❌ <strong>GAGAL:</strong><br>' . implode('<br>', array_map('htmlspecialchars', $errors)) . '</div>';
+    }
+}
+
+if ($action === 'import_datagangguan') {
+    $sql_file = __DIR__ . '/datagangguan.sql';
+    if (file_exists($sql_file)) {
+        $raw_content = file_get_contents($sql_file);
+        
+        // Auto-detect and convert UTF-16 if present
+        if (substr($raw_content, 0, 2) === "\xFF\xFE") {
+            $raw_content = function_exists('mb_convert_encoding') 
+                ? mb_convert_encoding($raw_content, 'UTF-8', 'UTF-16LE') 
+                : iconv('UTF-16LE', 'UTF-8//IGNORE', $raw_content);
+        } elseif (substr($raw_content, 0, 2) === "\xFE\xFF") {
+            $raw_content = function_exists('mb_convert_encoding') 
+                ? mb_convert_encoding($raw_content, 'UTF-8', 'UTF-16BE') 
+                : iconv('UTF-16BE', 'UTF-8//IGNORE', $raw_content);
+        }
+        
+        // Strip UTF-8 BOM
+        if (substr($raw_content, 0, 3) === "\xEF\xBB\xBF") {
+            $raw_content = substr($raw_content, 3);
+        }
+        
+        $lines = explode("\n", $raw_content);
+        $templine = '';
+        $err = false;
+        $errors = array();
+        @mysql_query("SET foreign_key_checks = 0");
+        @mysql_query("SET NAMES 'utf8mb4'");
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if (substr($trimmed, 0, 2) === '--' || $trimmed === '' || substr($trimmed, 0, 2) === '/*') continue;
+            $templine .= $line . "\n";
+            if (substr($trimmed, -1, 1) === ';') {
+                if (!@mysql_query($templine)) {
+                    $errors[] = mysql_error();
+                    $err = true;
+                    break;
+                }
+                $templine = '';
+            }
+        }
+        @mysql_query("SET foreign_key_checks = 1");
+        if (!$err) {
+            $fix_message = '<div class="alert alert-success">✅ <strong>BERHASIL!</strong> Data tabel <code>datagangguan</code> berhasil disinkronkan dari berkas <code>datagangguan.sql</code>!</div>';
+        } else {
+            $fix_message = '<div class="alert alert-danger">❌ <strong>GAGAL IMPORT:</strong> ' . htmlspecialchars(end($errors)) . '</div>';
+        }
+    } else {
+        $fix_message = '<div class="alert alert-warning">⚠️ Berkas <code>datagangguan.sql</code> tidak ditemukan di folder server! Silakan unggah berkas datagangguan.sql terlebih dahulu.</div>';
     }
 }
 
@@ -149,25 +244,51 @@ $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
         <?php endif; ?>
     </div>
 
-    <!-- 4. Pengecekan View v_datagangguan -->
+    <!-- 4. Pengecekan View Sistem (v_datagangguan, v_penyulang, v_keypoint) -->
     <div class="card">
-        <h3>4. Pengecekan View <code>v_datagangguan</code></h3>
-        <?php
-        $view_q = @mysql_query("SELECT COUNT(*) as total FROM v_datagangguan");
-        if ($view_q) {
-            $row_v = mysql_fetch_assoc($view_q);
-            $v_total = isset($row_v['total']) ? (int)$row_v['total'] : 0;
-            echo '<div class="alert alert-success">✅ View <code>v_datagangguan</code> terbaca dengan baik! Total: <strong>' . number_format($v_total) . ' baris</strong>.</div>';
-        } else {
-            $err = mysql_error();
-            echo '<div class="alert alert-danger">❌ <strong>Error membaca view <code>v_datagangguan</code>:</strong><br>' . htmlspecialchars($err) . '</div>';
-            
-            if (strpos($err, '1449') !== false || strpos($err, 'definer') !== false || strpos($err, 'exist') !== false || strpos($err, "doesn't exist") !== false) {
-                echo '<div class="alert alert-warning">⚠️ <strong>Penyebab Terdeteksi:</strong> View <code>v_datagangguan</code> di database hosting belum ada atau terkunci oleh akun <em>definer</em> lama (misal <code>root@localhost</code>). Silakan klik tombol perbaikan di bawah ini untuk memperbaikinya secara otomatis.</div>';
+        <h3>4. Pengecekan View Sistem (<code>v_datagangguan</code>, <code>v_penyulang</code>, <code>v_keypoint</code>)</h3>
+        <table>
+            <tr>
+                <th>Nama View</th>
+                <th>Status</th>
+                <th>Jumlah Data Terbaca</th>
+                <th>Keterangan</th>
+            </tr>
+            <?php
+            $views_to_check = array(
+                'v_datagangguan' => 'Rekap Data Gangguan & Join Relasi',
+                'v_penyulang' => 'Pilihan Penyulang (Entri & Monitoring)',
+                'v_keypoint' => 'Pilihan Keypoint (Entri & Visualisasi)'
+            );
+            $has_view_error = false;
+            foreach ($views_to_check as $vname => $vdesc) {
+                $vq = @mysql_query("SELECT COUNT(*) as total FROM `{$vname}`");
+                if ($vq) {
+                    $vr = mysql_fetch_assoc($vq);
+                    $vtotal = isset($vr['total']) ? (int)$vr['total'] : 0;
+                    echo "<tr><td><code>{$vname}</code></td><td><span class=\"badge-ok\">Normal</span></td><td><strong>" . number_format($vtotal) . " baris</strong></td><td>{$vdesc}</td></tr>";
+                } else {
+                    $has_view_error = true;
+                    $verr = mysql_error();
+                    echo "<tr><td><code>{$vname}</code></td><td><span class=\"badge-fail\">Error</span></td><td>-</td><td><small style='color:#dc3545;'>" . htmlspecialchars($verr) . "</small></td></tr>";
+                }
             }
-            echo '<p><a href="?action=fix_view" class="btn btn-success" onclick="return confirm(\'Jalankan perbaikan otomatis view v_datagangguan?\')">🛠️ Perbaiki View v_datagangguan Sekarang</a></p>';
-        }
-        ?>
+            ?>
+        </table>
+
+        <?php if ($has_view_error): ?>
+            <div style="margin-top: 15px;">
+                <div class="alert alert-warning" style="margin-bottom: 10px;">
+                    ⚠️ <strong>Penyebab Terdeteksi:</strong> View sistem belum dibuat atau terkunci oleh akun <em>definer</em> lama (misal <code>sarc5556@localhost</code> / <code>root@localhost</code>). Hal inilah yang menyebabkan pilihan penyulang atau keypoint suka tiba-tiba kosong di hosting.
+                </div>
+                <a href="?action=fix_all_views" class="btn btn-success" onclick="return confirm('Jalankan perbaikan otomatis untuk seluruh view database?')">🛠️ Perbaiki Semua View Sekarang (1-Klik)</a>
+            </div>
+        <?php else: ?>
+            <div style="margin-top: 12px; font-size: 13px; color: #155724;">
+                ✅ Semua view berjalan normal tanpa error hak akses (definer).
+                <a href="?action=fix_all_views" style="margin-left: 10px; color: #0056b3; font-size: 12px; text-decoration: underline;" onclick="return confirm('Jalankan sinkronisasi/re-create ulang seluruh view?')">Segarkan / Buat Ulang Semua View</a>
+            </div>
+        <?php endif; ?>
     </div>
 
     <!-- 5. Pengecekan Data Gangguan Terbaru -->
@@ -189,8 +310,54 @@ $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
             if ($today_cnt == 0) {
                 echo '<p style="margin-top:12px; font-size:13px; color:#6c757d;">ℹ️ <em>Catatan: Hari ini (<code>CURDATE()</code>) tercatat <strong>0 gangguan</strong>. Oleh karena itu pada halaman <strong>Monitoring Harian</strong>, tabel akan tampak kosong jika belum memilih rentang tanggal dan menekan tombol Filter.</em></p>';
             }
+            echo '<div style="margin-top:15px; padding-top:12px; border-top:1px solid #dee2e6;">';
+            echo '<a href="?action=import_datagangguan" class="btn btn-success" onclick="return confirm(\'Sinkronkan data tabel datagangguan dari datagangguan.sql? Data tabel datagangguan akan diperbarui dengan data bersih terbaru.\')">📥 Sinkronkan / Impor Tabel datagangguan dari datagangguan.sql (1-Klik)</a>';
+            echo '</div>';
         }
         ?>
+    </div>
+
+    <!-- 6. Diagnostik Kode Unit & UP3 Ponorogo -->
+    <div class="card">
+        <h3>6. Diagnostik Kode Unit & UP3 Ponorogo</h3>
+        <table>
+            <tr>
+                <th>Kode Unit</th>
+                <th>Nama Unit (Uraian)</th>
+                <th>Tipe</th>
+                <th>Jumlah Gangguan Terkait</th>
+            </tr>
+            <?php
+            $uq = @mysql_query("SELECT * FROM kodeunit ORDER BY CASE WHEN uraian LIKE '%UP3%' THEN 0 ELSE 1 END, kodeunit ASC");
+            if ($uq && mysql_num_rows($uq) > 0) {
+                while ($ur = mysql_fetch_assoc($uq)) {
+                    $k_unit = $ur['kodeunit'];
+                    $is_up3_row = (stripos($ur['uraian'], 'UP3') !== false || $k_unit == '5125' || $k_unit == '5152');
+                    
+                    if ($is_up3_row) {
+                        $cnt_q = @mysql_query("SELECT COUNT(*) as c FROM datagangguan");
+                        $cnt_val = ($cnt_q && $rc = mysql_fetch_assoc($cnt_q)) ? $rc['c'] : 0;
+                        $cnt_label = "<strong>" . number_format($cnt_val) . "</strong> (Total Semua ULP)";
+                        $type_badge = '<span class="badge-ok">UP3 (Semua Unit)</span>';
+                    } else {
+                        $cnt_q = @mysql_query("SELECT COUNT(*) as c FROM datagangguan WHERE unit = '" . mysql_real_escape_string($k_unit) . "'");
+                        $cnt_val = ($cnt_q && $rc = mysql_fetch_assoc($cnt_q)) ? $rc['c'] : 0;
+                        $cnt_label = number_format($cnt_val) . " gangguan";
+                        $type_badge = '<span class="badge-warn">ULP</span>';
+                    }
+                    
+                    echo "<tr>
+                        <td><code>{$k_unit}</code></td>
+                        <td><strong>" . htmlspecialchars($ur['uraian']) . "</strong></td>
+                        <td>{$type_badge}</td>
+                        <td>{$cnt_label}</td>
+                    </tr>";
+                }
+            } else {
+                echo "<tr><td colspan='4' class='text-danger'>Tabel <code>kodeunit</code> kosong atau tidak terbaca!</td></tr>";
+            }
+            ?>
+        </table>
     </div>
 
     <div style="text-align:center; margin-top:20px;">

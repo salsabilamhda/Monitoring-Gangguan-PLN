@@ -1,40 +1,44 @@
 <?php
 include "connect.php";
 
-function compressImage($source, $destination, $quality = 70) {
-    $info = getimagesize($source);
-    if ($info === false) return false;
-    $mime = $info['mime'];
+if (!function_exists('compressImage')) {
+    function compressImage($source, $destination, $quality = 70) {
+        $info = getimagesize($source);
+        if ($info === false) return false;
+        $mime = $info['mime'];
 
-    switch ($mime) {
-        case 'image/jpeg':
-            $image = imagecreatefromjpeg($source);
-            break;
-        case 'image/png':
-            $image = imagecreatefrompng($source);
-            break;
-        case 'image/gif':
-            $image = imagecreatefromgif($source);
-            break;
-        default:
-            return false;
+        switch ($mime) {
+            case 'image/jpeg':
+                $image = imagecreatefromjpeg($source);
+                break;
+            case 'image/png':
+                $image = imagecreatefrompng($source);
+                break;
+            case 'image/gif':
+                $image = imagecreatefromgif($source);
+                break;
+            default:
+                return false;
+        }
+
+        $res = imagejpeg($image, $destination, $quality);
+        imagedestroy($image);
+        return $res;
     }
-
-    $res = imagejpeg($image, $destination, $quality);
-    imagedestroy($image);
-    return $res;
 }
 
-function isImage($tmpName) {
-    return getimagesize($tmpName) !== false;
+if (!function_exists('isImage')) {
+    function isImage($tmpName) {
+        return getimagesize($tmpName) !== false;
+    }
 }
 
 // Hapus data
-if(isset($_GET['hapus'])){
-    $id_hapus = intval($_GET['hapus']);
-    $gabungawal  = isset($_GET['awal']) ? $_GET['awal'] : '';
-    $gabungakhir = isset($_GET['akhir']) ? $_GET['akhir'] : '';
-    $unit = isset($_GET['unit']) ? $_GET['unit'] : '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_hapus']) && isset($_POST['id_hapus'])) {
+    $id_hapus = intval($_POST['id_hapus']);
+    $gabungawal  = isset($_POST['awal']) ? $_POST['awal'] : '';
+    $gabungakhir = isset($_POST['akhir']) ? $_POST['akhir'] : '';
+    $unit = isset($_POST['unit']) ? $_POST['unit'] : '';
     $qf = mysql_query("SELECT foto1,foto2 FROM datagangguan WHERE idgangguan=$id_hapus");
     if($rf = mysql_fetch_assoc($qf)){
         foreach($rf as $f){
@@ -484,9 +488,21 @@ while($row_j = mysql_fetch_assoc($q_jenis)) {
           }
       }
       
-      $unit = isset($_POST['unit']) ? $_POST['unit'] : (isset($_GET['unit']) ? $_GET['unit'] : '');
-      $gabungawal1  = isset($_GET['awal']) ? $_GET['awal'] : '';
-      $gabungakhir2 = isset($_GET['akhir']) ? $_GET['akhir'] : '';
+      $unit = isset($_POST['unit']) ? trim($_POST['unit']) : (isset($_GET['unit']) ? trim($_GET['unit']) : '');
+      $gabungawal1  = isset($_GET['awal']) ? trim($_GET['awal']) : '';
+      $gabungakhir2 = isset($_GET['akhir']) ? trim($_GET['akhir']) : '';
+      
+      // Cek apakah unit yang dipilih adalah UP3 Ponorogo (semua unit ULP)
+      $is_up3 = ($unit === '5125' || $unit === '5152' || $unit === 'ALL' || empty($unit));
+      if (!$is_up3 && !empty($unit)) {
+          $q_chk = mysql_query("SELECT uraian FROM kodeunit WHERE kodeunit = '" . mysql_real_escape_string($unit) . "'");
+          if ($q_chk && $r_chk = mysql_fetch_assoc($q_chk)) {
+              if (stripos($r_chk['uraian'], 'UP3') !== false) {
+                  $is_up3 = true;
+              }
+          }
+      }
+
       $map = '<img src ="map.png" alt="Map" />';
       $lokasi='https://www.google.com/maps/place/';
       ?>
@@ -533,7 +549,7 @@ while($row_j = mysql_fetch_assoc($q_jenis)) {
             // Jika belum di-filter, tampilkan data gangguan hari ini (CURDATE)
             $query = "SELECT * FROM v_datagangguan WHERE DATE(tglgangguan) = CURDATE() ORDER BY tglgangguan DESC";
         } elseif ($gabungawal1 != '' && $gabungakhir2 != '') {
-            if ($unit == '5125') {
+            if ($is_up3) {
                 $query = "SELECT * FROM v_datagangguan 
                           WHERE DATE(tglgangguan) BETWEEN '$gabungawal1' AND '$gabungakhir2' ORDER BY tglgangguan DESC";
             } else {
@@ -541,7 +557,7 @@ while($row_j = mysql_fetch_assoc($q_jenis)) {
                           WHERE DATE(tglgangguan) BETWEEN '$gabungawal1' AND '$gabungakhir2' AND unit = '$unit' ORDER BY tglgangguan DESC";
             }
         } elseif ($gabungawal != '' && $gabungakhir != '') {
-            if ($unit == '5125') {
+            if ($is_up3) {
                 $query = "SELECT * FROM v_datagangguan 
                           WHERE DATE(tglgangguan) BETWEEN '$gabungawal' AND '$gabungakhir' ORDER BY tglgangguan DESC";
             } else {
@@ -606,9 +622,16 @@ while($row_j = mysql_fetch_assoc($q_jenis)) {
                         <button type='button' class='btn btn-sm btn-warning text-dark btn-edit' data-id='$idgangguan' title='Edit / Koreksi Data'>
                           <i class='fa fa-edit'></i> Edit
                         </button>
-                        <a href='?hapus=$idgangguan&awal={$current_awal}&akhir={$current_akhir}&unit={$unit}' class='btn btn-sm btn-danger btn-delete' title='Hapus Data'>
-                          <i class='fa fa-trash'></i> Hapus
-                        </a>
+                        <form method='POST' action='' style='display:inline;' class='form-delete-gangguan'>
+                          <input type='hidden' name='action_hapus' value='1'>
+                          <input type='hidden' name='id_hapus' value='$idgangguan'>
+                          <input type='hidden' name='awal' value='{$current_awal}'>
+                          <input type='hidden' name='akhir' value='{$current_akhir}'>
+                          <input type='hidden' name='unit' value='{$unit}'>
+                          <button type='button' class='btn btn-sm btn-danger btn-delete' title='Hapus Data'>
+                            <i class='fa fa-trash'></i> Hapus
+                          </button>
+                        </form>
                       </div>
                     </td>
                 </tr>";
@@ -1365,7 +1388,7 @@ while($row_j = mysql_fetch_assoc($q_jenis)) {
     // SweetAlert2 Delete Confirmation
     $(document).on('click', '.btn-delete', function(e) {
       e.preventDefault();
-      const url = $(this).attr('href');
+      const form = $(this).closest('form');
       
       Swal.fire({
         title: 'Apakah Anda yakin?',
@@ -1378,7 +1401,7 @@ while($row_j = mysql_fetch_assoc($q_jenis)) {
         cancelButtonText: 'Batal'
       }).then((result) => {
         if (result.isConfirmed) {
-          window.location.href = url;
+          form.submit();
         }
       });
     });

@@ -181,13 +181,19 @@ $penyulang_aliases = [
     'SELOAJI' => 'SLOJI',
     'MLARAK' => 'MLARK',
     'SUMOROTO' => 'SUMOR',
+    'SOMOROTO' => 'SUMOR',
     'MUNJUNGAN' => 'MJGAN',
     'MUJUNGAN' => 'MJGAN',
     'PASAR PON' => 'PSRPO',
     'NONGKODONO' => 'NKDNO',
     'KAMPAC' => 'KMPAK',
     'KAMPAK' => 'KMPAK',
-    'WADUK BENDO' => 'WBNDO'
+    'WADUK BENDO' => 'WBNDO',
+    'TEGAL OMBO BLG' => 'T-OMB',
+    'RSUD' => 'RSUDP',
+    'RSUD PONOROGO' => 'RSUDP',
+    'PANTAI GEMAH' => 'PRIGI',
+    'KANTOR POS' => 'PULE'
 ];
 foreach ($penyulang_aliases as $alias => $target) {
     $penyulangs[$alias] = $target;
@@ -215,10 +221,13 @@ $penyulang_to_unit['JENNG'] = '51540';
 $penyulang_to_unit['KDPTN'] = '51540';
 $penyulang_to_unit['SLOJI'] = '51540';
 $penyulang_to_unit['MLARK'] = '51540';
+$penyulang_to_unit['RSUDP'] = '51540';
 $penyulang_to_unit['KTURI'] = '51543';
+$penyulang_to_unit['PRIGI'] = '51543';
+$penyulang_to_unit['PULE'] = '51543';
 $penyulang_to_unit['KBAGU'] = '51542';
 $penyulang_to_unit['WKARU'] = '51542';
-$penyulang_to_unit['T-OMB'] = '51542';
+$penyulang_to_unit['T-OMB'] = '51541';
 
 // Keypoint lookup (description/id -> idkeypoint)
 $keypoints = [];
@@ -396,31 +405,30 @@ foreach ($data as $index => $row) {
         }
     }
     
-    // 4. Unit
+    // 4. Unit (Setiap gangguan dialokasikan ke 4 ULP di bawah naungan UP3 Ponorogo)
     $raw_unit = isset($row['Unit']) ? strtoupper(trim($row['Unit'])) : '';
     $unit = '';
-    if (!empty($raw_unit)) {
-        if (isset($units[$raw_unit])) {
-            $unit = $units[$raw_unit];
-        } else {
-            foreach ($units as $uk => $uv) {
-                if (strpos($raw_unit, $uk) !== false || strpos($uk, $raw_unit) !== false) {
-                    $unit = $uv;
-                    break;
-                }
-            }
-        }
+    
+    if (stripos($raw_unit, 'TRENGGALEK') !== false || $raw_unit === 'PRIGI' || $raw_unit === 'PULE') {
+        $unit = '51543'; // ULP Trenggalek
+    } elseif (stripos($raw_unit, 'PACITAN') !== false) {
+        $unit = '51542'; // ULP Pacitan
+    } elseif (stripos($raw_unit, 'BALONG') !== false) {
+        $unit = '51541'; // ULP Balong
+    } elseif (strpos($raw_unit, 'ULP PONOROGO') !== false || $raw_unit === 'PONOROGO' || $raw_unit === '51540') {
+        $unit = '51540'; // ULP Ponorogo
     }
-    // Jika unit di Excel kosong, otomatis cari dari kode penyulang
+    
+    // Jika unit belum terisi (misal UP3 PONOROGO, #N/A, kosong, dll), cari berdasarkan kode penyulang
     if (empty($unit) && !empty($penyulang_code) && isset($penyulang_to_unit[$penyulang_code])) {
         $unit = $penyulang_to_unit[$penyulang_code];
     }
+    
     // Fallback jika unit masih belum terisi
     if (empty($unit)) {
         if (stripos($raw_unit, 'TRENGGALEK') !== false) $unit = '51543';
         elseif (stripos($raw_unit, 'PACITAN') !== false) $unit = '51542';
         elseif (stripos($raw_unit, 'BALONG') !== false) $unit = '51541';
-        elseif (stripos($raw_unit, 'PONOROGO') !== false) $unit = '51540';
         else $unit = '51540'; // Default ULP Ponorogo
     }
     
@@ -451,6 +459,9 @@ foreach ($data as $index => $row) {
             'PTTOP' => 'TOP',
             'TRANJANG' => 'TRANJANG 1',
             'SUMBEREJO' => 'SUMBERREJO',
+            'JATI PRAHU' => 'JATIPRAHU',
+            'RECJATIPRAHU' => 'JATIPRAHU',
+            'RECJATI PRAHU' => 'JATIPRAHU',
         ];
 
         if (isset($alias_map[$raw_kp_clean])) {
@@ -464,6 +475,12 @@ foreach ($data as $index => $row) {
         // Penanganan Khusus Perbatasan / Manuver Antar-Penyulang
         if ($raw_kp_clean === 'REJOWINANGUN' && $penyulang_code === 'PGLAN') {
             $penyulang_code = 'MELIS'; // PMCB REJOWINANGUN terdaftar di feeder MELIS
+        }
+        if ($raw_kp_clean === 'PANTAI GEMAH' && empty($penyulang_code)) {
+            $penyulang_code = 'PRIGI';
+        }
+        if ($raw_kp_clean === 'KANTOR POS' && empty($penyulang_code)) {
+            $penyulang_code = 'PULE';
         }
 
         // 1. PRIORITAS UTAMA: Cari pada PENYULANG YANG SAMA (menghindari salah sambung antar-wilayah)

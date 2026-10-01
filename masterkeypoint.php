@@ -50,17 +50,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $error = "Gagal memperbarui data: " . mysql_error();
             }
+        } elseif ($_POST['action'] === 'delete') {
+            $idkeypoint = (int)$_POST['idkeypoint'];
+            $query = "DELETE FROM kodekeypoint WHERE idkeypoint = $idkeypoint";
+            if (mysql_query($query)) {
+                $success = "Data Keypoint berhasil dihapus!";
+            } else {
+                $error = "Gagal menghapus data: " . mysql_error();
+            }
         }
-    }
-}
-
-if (isset($_GET['delete'])) {
-    $idkeypoint = (int)$_GET['delete'];
-    $query = "DELETE FROM kodekeypoint WHERE idkeypoint = $idkeypoint";
-    if (mysql_query($query)) {
-        $success = "Data Keypoint berhasil dihapus!";
-    } else {
-        $error = "Gagal menghapus data: " . mysql_error();
     }
 }
 
@@ -228,11 +226,13 @@ while ($rp = mysql_fetch_assoc($qp)) {
                             data-longitud="<?php echo htmlspecialchars($row['longitud']); ?>">
                       <i class="fa fa-edit"></i>
                     </button>
-                    <a href="?delete=<?php echo urlencode($row['idkeypoint']); ?>" 
-                       class="btn btn-danger btn-sm" 
-                       onclick="return confirm('Apakah Anda yakin ingin menghapus keypoint ini?');">
-                      <i class="fa fa-trash"></i>
-                    </a>
+                    <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus keypoint ini?');">
+                      <input type="hidden" name="action" value="delete">
+                      <input type="hidden" name="idkeypoint" value="<?php echo htmlspecialchars($row['idkeypoint']); ?>">
+                      <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                    </form>
                   </div>
                 </td>
               </tr>

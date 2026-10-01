@@ -237,7 +237,17 @@ include "connect.php";
             $where_clauses[] = "kat_gangguan = 'PMT'";
         }
 
-        if ($unit != '5125') {
+        $is_up3 = ($unit === '5125' || $unit === '5152' || $unit === 'ALL' || empty($unit));
+        if (!$is_up3 && !empty($unit)) {
+            $q_chk = mysql_query("SELECT uraian FROM kodeunit WHERE kodeunit = '" . mysql_real_escape_string($unit) . "'");
+            if ($q_chk && $r_chk = mysql_fetch_assoc($q_chk)) {
+                if (stripos($r_chk['uraian'], 'UP3') !== false) {
+                    $is_up3 = true;
+                }
+            }
+        }
+
+        if (!$is_up3) {
             $where_clauses[] = "unit = '$unit'";
         }
 

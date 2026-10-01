@@ -33,7 +33,24 @@ SET time_zone = "+00:00";
 -- Structure for view `v_keypoint`
 --
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`sarc5556`@`localhost` SQL SECURITY DEFINER VIEW `v_keypoint`  AS SELECT `a`.`kodepenyul` AS `kodepenyul`, `a`.`jenis` AS `jenis`, `a`.`keterangan` AS `keterangan`, `a`.`unit` AS `unit`, `a`.`zona` AS `zona`, `a`.`latitud` AS `latitud`, `a`.`longitud` AS `longitud`, `a`.`id_keypint` AS `id_keypint`, `b`.`uraianpenyul` AS `uraianpenyul`, `c`.`uraian` AS `uraian` FROM ((`kodekeypoint` `a` join `kodepenyulang` `b`) join `kodeunit` `c`) WHERE `a`.`kodepenyul` = `b`.`kodepenyul` AND `a`.`unit` = `c`.`kodeunit` ;
+DROP VIEW IF EXISTS `v_keypoint`;
+
+CREATE VIEW `v_keypoint` AS 
+SELECT 
+  `a`.`idkeypoint` AS `idkeypoint`, 
+  `a`.`kodepenyul` AS `kodepenyul`, 
+  `a`.`jenis` AS `jenis`, 
+  `a`.`keterangan` AS `keterangan`, 
+  `a`.`unit` AS `unit`, 
+  `a`.`zona` AS `zona`, 
+  `a`.`latitud` AS `latitud`, 
+  `a`.`longitud` AS `longitud`, 
+  `a`.`id_keypint` AS `id_keypint`, 
+  COALESCE(`b`.`uraianpenyul`, `a`.`kodepenyul`) AS `uraianpenyul`, 
+  COALESCE(`c`.`uraian`, `a`.`unit`) AS `uraian` 
+FROM `kodekeypoint` `a` 
+LEFT JOIN `kodepenyulang` `b` ON `a`.`kodepenyul` = `b`.`kodepenyul` 
+LEFT JOIN `kodeunit` `c` ON `a`.`unit` = `c`.`kodeunit`;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

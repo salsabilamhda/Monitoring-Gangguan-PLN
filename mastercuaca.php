@@ -34,17 +34,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = "Gagal memperbarui data: " . mysql_error();
                 }
             }
+        } elseif ($_POST['action'] === 'delete') {
+            $idcuaca = (int)$_POST['idcuaca'];
+            $query = "DELETE FROM kodecuaca WHERE idcuaca = $idcuaca";
+            if (mysql_query($query)) {
+                $success = "Data Cuaca berhasil dihapus!";
+            } else {
+                $error = "Gagal menghapus data: " . mysql_error();
+            }
         }
-    }
-}
-
-if (isset($_GET['delete'])) {
-    $idcuaca = (int)$_GET['delete'];
-    $query = "DELETE FROM kodecuaca WHERE idcuaca = $idcuaca";
-    if (mysql_query($query)) {
-        $success = "Data Cuaca berhasil dihapus!";
-    } else {
-        $error = "Gagal menghapus data: " . mysql_error();
     }
 }
 ?>
@@ -174,11 +172,13 @@ if (isset($_GET['delete'])) {
                           data-uraian="<?php echo htmlspecialchars($row['uraiancuaca']); ?>">
                     <i class="fa fa-edit"></i> Edit
                   </button>
-                  <a href="?delete=<?php echo urlencode($row['idcuaca']); ?>" 
-                     class="btn btn-danger btn-sm" 
-                     onclick="return confirm('Apakah Anda yakin ingin menghapus data cuaca ini?');">
-                    <i class="fa fa-trash"></i> Hapus
-                  </a>
+                  <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data cuaca ini?');">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="idcuaca" value="<?php echo htmlspecialchars($row['idcuaca']); ?>">
+                    <button type="submit" class="btn btn-danger btn-sm">
+                      <i class="fa fa-trash"></i> Hapus
+                    </button>
+                  </form>
                 </td>
               </tr>
             <?php endwhile; ?>
